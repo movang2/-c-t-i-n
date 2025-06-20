@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Danh sách từ vựng Hàn - Việt với TTS</title>
+<style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .container {
+            max-height: 60vh;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            max-width: 600px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.2;
+        }
+        th {
+            background-color: #f4f4f4;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        td input {
+            width: 100%;
+            border: none;
+            padding: 2px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        td input:focus {
+            outline: none;
+            background-color: #f0f0f0;
+        }
+        .korean {
+            cursor: pointer;
+            color: #0066cc;
+        }
+        .korean:hover {
+            text-decoration: underline;
+        }
+        #add-word, #save-btn {
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+        .highlight {
+            background-color: #ffeb3b;
+        }
+        .selected-row {
+            background-color: #e6f7ff;
+        }
+        .controls {
+            margin-top: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .play-selected {
+            background-color: #4CAF50;
+            color: white;
+        }
+        button {
+            padding: 6px 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: transform 0.2s, background 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        #temp-save-info {
+            color: green;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        .incorrect {
+            background-color: #ffcccc;
+        }
+        .incorrect .korean {
+            color: #cc0000;
+        }
+        .dragging {
+            opacity: 0.5;
+            background-color: #f0f0f0;
+        }
+        .drop-target {
+            border-top: 2px solid #0066cc;
+        }
+        .sort-options {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        #pause-btn {
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+        }
+        #pause-btn:hover {
+            background-color: #45a049;
+        }
+        #currentText {
+            margin: 15px 0;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 5px;
+            border: 2px solid #ffeeba;
+            font-size: 18px;
+            color: #856404;
+            min-height: 20px;
+        }
+        .settings {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .setting-item {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        .clean-btn {
+            background-color: #ff9800;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<h2>Danh sách từ vựng Hàn - Việt với TTS</h2>
+<input accept=".txt" id="fileInput" type="file"/>
+<div class="controls">
+<button id="play-btn">▶️ Đọc tự động</button>
+<button id="stop-btn">⏹️ Dừng hẳn</button>
+<button class="play-selected" id="play-selected">Đọc từ được chọn</button>
+<button id="delete-selected">Xóa từ được chọn</button>
+<button class="clean-btn" id="clean-all">🧹 Làm sạch tất cả</button>
+</div>
+<div id="currentText">Đang nói: <span id="currentWord">Chưa bắt đầu</span></div>
+<div class="settings">
+<div class="setting-item">
+<label>Tốc độ nói (0.5-2):</label>
+<input id="speechRate" max="2" min="0.5" step="0.1" type="range" value="1"/>
+<span id="rateValue">1</span>
+</div>
+<div class="setting-item">
+<label>Khoảng dừng (ms):</label>
+<input id="pauseTime" max="3000" min="500" step="100" type="range" value="1000"/>
+<span id="pauseValue">1000</span>
+</div>
+</div>
+<div class="sort-options">
+<button id="sort-korean">Sắp xếp theo tiếng Hàn (A-Z)</button>
+<button id="sort-vietnamese">Sắp xếp theo tiếng Việt (A-Z)</button>
+<button id="reset-order">Khôi phục thứ tự ban đầu</button>
+<button id="pause-btn">⏸️ Tạm dừng</button>
+</div>
+<div class="container">
+<table id="vocabTable">
+<thead>
+<tr>
+<th style="width: 50%;">Tiếng Hàn</th>
+<th style="width: 50%;">Tiếng Việt</th>
+</tr>
+</thead>
+<tbody id="vocabBody">
+</tbody>
+</table>
+</div>
+<div id="temp-save-info"></div>
+<h3>Chuỗi từ sai để copy/sửa hàng loạt</h3>
+<textarea id="incorrectTextArea" rows="4" style="width:100%;"></textarea>
+<br/>
+<button onclick="updateFromIncorrectText()">Cập nhật từ đoạn văn đã chỉnh sửa</button>
+<h3>Từ bị đánh dấu sai</h3>
+<div class="container">
+<table id="incorrectTable">
+<thead>
+<tr>
+<th>Tiếng Hàn</th>
+<th>Tiếng Việt</th>
+</tr>
+</thead>
+<tbody id="incorrectBody"></tbody>
+</table>
+</div>
+<button id="add-word">Thêm từ mới sau từ đang chọn</button>
+<h3>Thêm nhiều từ vựng cùng lúc (dạng: 대금 cho vay tiền, 대기 chờ đợi)</h3>
+<textarea id="bulkInput" rows="4" style="width:100%;"></textarea>
+<br/>
+<button onclick="addBulkWords()">Thêm nhiều từ</button>
+
+<button id="save-btn">Lưu file</button>
+<button id="clear-temp">Xóa dữ liệu tạm</button>
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const vocabBody = document.getElementById('vocabBody');
+    const addWordBtn = document.getElementById('add-word');
+    const saveBtn = document.getElementById('save-btn');
+    const playBtn = document.getElementById('play-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const playSelectedBtn = document.getElementById('play-selected');
+    const deleteBtn = document.getElementById('delete-selected');
+    const cleanAllBtn = document.getElementById('clean-all');
+    const clearTempBtn = document.getElementById('clear-temp');
+    const tempSaveInfo = document.getElementById('temp-save-info');
+    const sortKoreanBtn = document.getElementById('sort-korean');
+    const sortVietnameseBtn = document.getElementById('sort-vietnamese');
+    const resetOrderBtn = document.getElementById('reset-order');
+    const pauseBtn = document.getElementById('pause-btn');
+    const currentWordSpan = document.getElementById('currentWord');
+    const speechRate = document.getElementById('speechRate');
+    const rateValue = document.getElementById('rateValue');
+    const pauseTime = document.getElementById('pauseTime');
+    const pauseValue = document.getElementById('pauseValue');
+
+    let vocabList = [];
+    let originalOrder = [];
+    let isPlaying = false;
+    let isPaused = false;
+    let currentIndex = 0;
+    let selectedIndex = null;
+    let speechSynthesis = window.speechSynthesis;
+    let koreanVoice = null;
+    let vietnameseVoice = null;
+    let currentUtterance = null;
+    let draggedItem = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedData = localStorage.getItem('koreanVocabData');
+        if (savedData) {
+            const parsedData = JSON.parse(savedData);
+            vocabList = parsedData.vocabList || parsedData;
+            originalOrder = parsedData.originalOrder || [...Array(vocabList.length).keys()];
+            
+            displayVocabList();
+            displayIncorrectList();
+            updateIncorrectTextArea();
+            tempSaveInfo.textContent = 'Đã tải dữ liệu chưa hoàn thành từ lần làm việc trước.';
+            setTimeout(() => {
+                tempSaveInfo.textContent = '';
+            }, 3000);
+        }
+        
+        setupDragAndDrop();
+        updateRangeValues();
+    });
+
+    function updateRangeValues() {
+        speechRate.oninput = function() {
+            rateValue.textContent = this.value;
+        };
+        pauseTime.oninput = function() {
+            pauseValue.textContent = this.value;
+        };
+    }
+
+    function cleanNaverDictionaryText(text) {
+        // Xóa số thứ tự, dấu ngoặc, ký tự đặc biệt VÀ dấu phẩy
+        text = text.replace(/\d+\.|\[.*?\]|[※▼,]/g, '');
+        // Xóa khoảng trắng thừa
+        text = text.trim().replace(/\s+/g, ' ');
+        return text;
+    }
+
+    function handlePaste(event, index) {
+        setTimeout(() => {
+            const input = event.target;
+            const cleanedText = cleanNaverDictionaryText(input.value);
+            input.value = cleanedText;
+            saveEdit(input, index);
+        }, 0);
+    }
+
+    function cleanAllVocab() {
+        vocabList.forEach(item => {
+            if (item.vietnamese) {
+                // Xóa dấu phẩy trong toàn bộ dữ liệu
+                item.vietnamese = item.vietnamese.replace(/,/g, '');
+                // Áp dụng các quy tắc làm sạch khác
+                item.vietnamese = cleanNaverDictionaryText(item.vietnamese);
+            }
+        });
+        saveTempData();
+        displayVocabList();
+        displayIncorrectList();
+        updateIncorrectTextArea();
+        tempSaveInfo.textContent = 'Đã làm sạch tất cả từ vựng (bao gồm xóa dấu phẩy)!';
+        setTimeout(() => {
+            tempSaveInfo.textContent = '';
+        }, 2000);
+    }
+
+    cleanAllBtn.addEventListener('click', cleanAllVocab);
+
+    function displayVocabList() {
+        vocabBody.innerHTML = '';
+        
+        vocabList.forEach((item, index) => {
+            const row = document.createElement('tr');
+            row.id = `row-${index}`;
+            row.draggable = true;
+            
+            if (item.incorrect) {
+                row.classList.add('incorrect');
+            }
+            
+            if (item.korean) {
+                row.innerHTML = `
+                    <td><span class="korean" onclick="searchDictionary('${item.korean}')">${item.korean}</span></td>
+                    <td><input type="text" value="${item.vietnamese}" onblur="saveEdit(this, ${index})" onclick="selectRow(${index})" onpaste="handlePaste(event, ${index})"></td>
+                `;
+            } else {
+                row.innerHTML = `
+                    <td><input type="text" placeholder="Nhập tiếng Hàn" onblur="makeSearchable(this, ${index})"></td>
+                    <td><input type="text" placeholder="Nhập nghĩa tiếng Việt" value="${item.vietnamese}" onblur="saveEdit(this, ${index})" onpaste="handlePaste(event, ${index})"></td>
+                `;
+            }
+            
+            row.addEventListener('click', () => {
+                selectRow(index);
+                if (isPlaying || isPaused) {
+                    toggleIncorrect(index);
+                }
+            });
+            
+            row.addEventListener('dragstart', handleDragStart);
+            row.addEventListener('dragover', handleDragOver);
+            row.addEventListener('dragleave', handleDragLeave);
+            row.addEventListener('drop', handleDrop);
+            row.addEventListener('dragend', handleDragEnd);
+            
+            vocabBody.appendChild(row);
+        });
+    }
+
+    function setupDragAndDrop() {
+        // Các sự kiện đã được thêm trong displayVocabList
+    }
+
+    function handleDragStart(e) {
+        draggedItem = this;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', this.innerHTML);
+        this.classList.add('dragging');
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        const targetRow = e.target.closest('tr');
+        if (!targetRow || targetRow === draggedItem) return;
+        
+        document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+        targetRow.classList.add('drop-target');
+    }
+
+    function handleDragLeave(e) {
+        this.classList.remove('drop-target');
+    }
+
+    function handleDrop(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        const targetRow = e.target.closest('tr');
+        if (!targetRow || targetRow === draggedItem) return;
+        
+        const draggedIndex = Array.from(vocabBody.children).indexOf(draggedItem);
+        const targetIndex = Array.from(vocabBody.children).indexOf(targetRow);
+        
+        if (draggedIndex !== -1 && targetIndex !== -1) {
+            const [removed] = vocabList.splice(draggedIndex, 1);
+            vocabList.splice(targetIndex, 0, removed);
+            
+            const [removedOrder] = originalOrder.splice(draggedIndex, 1);
+            originalOrder.splice(targetIndex, 0, removedOrder);
+            
+            saveTempData();
+            displayVocabList();
+            displayIncorrectList();
+            updateIncorrectTextArea();
+        }
+        
+        targetRow.classList.remove('drop-target');
+    }
+
+    function handleDragEnd() {
+        this.classList.remove('dragging');
+        document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+    }
+
+    function toggleIncorrect(index) {
+        vocabList[index].incorrect = !vocabList[index].incorrect;
+        const row = document.getElementById(`row-${index}`);
+        if (vocabList[index].incorrect) {
+            row.classList.add('incorrect');
+        } else {
+            row.classList.remove('incorrect');
+        }
+        displayIncorrectList();
+        updateIncorrectTextArea();
+        saveTempData();
+    }
+
+    function saveTempData() {
+        const dataToSave = {
+            vocabList: vocabList,
+            originalOrder: originalOrder
+        };
+        localStorage.setItem('koreanVocabData', JSON.stringify(dataToSave));
+        tempSaveInfo.textContent = 'Đã lưu tạm dữ liệu. Bạn có thể đóng trình duyệt và tiếp tục sau.';
+        setTimeout(() => {
+            tempSaveInfo.textContent = '';
+        }, 2000);
+    }
+
+    sortKoreanBtn.addEventListener('click', () => {
+        vocabList.sort((a, b) => {
+            const koreanA = a.korean || '';
+            const koreanB = b.korean || '';
+            return koreanA.localeCompare(koreanB);
+        });
+        saveTempData();
+        displayVocabList();
+    });
+
+    sortVietnameseBtn.addEventListener('click', () => {
+        vocabList.sort((a, b) => {
+            const vietnameseA = a.vietnamese || '';
+            const vietnameseB = b.vietnamese || '';
+            return vietnameseA.localeCompare(vietnameseB);
+        });
+        saveTempData();
+        displayVocabList();
+    });
+
+    resetOrderBtn.addEventListener('click', () => {
+        const newVocabList = [];
+        const newOriginalOrder = [];
+        
+        originalOrder.forEach((originalIndex, newIndex) => {
+            if (originalIndex < vocabList.length) {
+                newVocabList[newIndex] = vocabList[originalIndex];
+                newOriginalOrder[newIndex] = originalIndex;
+            }
+        });
+        
+        for (let i = 0; i < vocabList.length; i++) {
+            if (!originalOrder.includes(i)) {
+                newVocabList.push(vocabList[i]);
+                newOriginalOrder.push(i);
+            }
+        }
+        
+        vocabList = newVocabList;
+        originalOrder = newOriginalOrder;
+        
+        saveTempData();
+        displayVocabList();
+    });
+
+    speechRate.addEventListener('input', () => {
+        rateValue.textContent = speechRate.value;
+        if (currentUtterance) {
+            currentUtterance.rate = parseFloat(speechRate.value);
+        }
+    });
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const content = event.target.result;
+                parseAndDisplay(content);
+                saveTempData();
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    function parseAndDisplay(content) {
+        vocabList = [];
+        originalOrder = [];
+
+        const pairs = content.split(',').map(pair => pair.trim());
+
+        pairs.forEach((pair, index) => {
+            const parts = pair.split(' ', 2);
+            if (parts.length === 2) {
+                const korean = parts[0];
+                const vietnamese = pair.substring(korean.length + 1).trim();
+                vocabList.push({ korean, vietnamese, incorrect: false });
+                originalOrder.push(index);
+            }
+        });
+
+        displayVocabList();
+        displayIncorrectList();
+        updateIncorrectTextArea();
+    }
+
+    function selectRow(index) {
+        const previouslySelected = document.querySelector('.selected-row');
+        if (previouslySelected) {
+            previouslySelected.classList.remove('selected-row');
+        }
+        
+        const row = document.getElementById(`row-${index}`);
+        row.classList.add('selected-row');
+        selectedIndex = index;
+    }
+
+    function searchDictionary(word) {
+        const url = `https://korean.dict.naver.com/kovidict/#/search?query=${encodeURIComponent(word)}`;
+        window.open(url, '_blank');
+    }
+
+    function speakKorean(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "ko-KR";
+        utterance.voice = koreanVoice;
+        utterance.rate = parseFloat(speechRate.value);
+        speechSynthesis.speak(utterance);
+        return utterance;
+    }
+
+    function speakVietnamese(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "vi-VN";
+        utterance.voice = vietnameseVoice;
+        utterance.rate = parseFloat(speechRate.value);
+        speechSynthesis.speak(utterance);
+        return utterance;
+    }
+
+    function playWordPair(index) {
+        if (index >= vocabList.length || !isPlaying) return;
+
+        const { korean, vietnamese } = vocabList[index];
+        currentWordSpan.textContent = `${korean} - ${vietnamese}`;
+
+        // Highlight hàng hiện tại
+        removeHighlight();
+        const row = document.getElementById(`row-${index}`);
+        if (row) {
+            row.classList.add('highlight');
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        const koreanUtterance = speakKorean(korean);
+        
+        koreanUtterance.onend = () => {
+            setTimeout(() => {
+                const vietnameseUtterance = speakVietnamese(vietnamese);
+                
+                vietnameseUtterance.onend = () => {
+                    setTimeout(() => {
+                        currentIndex++;
+                        if (currentIndex < vocabList.length && isPlaying) {
+                            playWordPair(currentIndex);
+                        } else {
+                            isPlaying = false;
+                            removeHighlight();
+                            currentWordSpan.textContent = "Đã hoàn thành";
+                        }
+                    }, parseInt(pauseTime.value));
+                };
+            }, parseInt(pauseTime.value));
+        };
+    }
+
+    function saveEdit(input, index) {
+        vocabList[index].vietnamese = cleanNaverDictionaryText(input.value.trim());
+        saveTempData();
+        displayIncorrectList();
+        updateIncorrectTextArea();
+    }
+
+    addWordBtn.addEventListener('click', function() {
+        let insertIndex;
+        
+        if (selectedIndex !== null) {
+            insertIndex = selectedIndex + 1;
+        } else {
+            insertIndex = vocabList.length;
+        }
+        
+        vocabList.splice(insertIndex, 0, { korean: '', vietnamese: '', incorrect: false });
+        originalOrder.splice(insertIndex, 0, vocabList.length - 1);
+        saveTempData();
+        
+        displayVocabList();
+        selectRow(insertIndex);
+        
+        const newRow = document.getElementById(`row-${insertIndex}`);
+        const koreanInput = newRow.querySelector('td:first-child input');
+        if (koreanInput) {
+            koreanInput.focus();
+        }
+    });
+
+    deleteBtn.addEventListener('click', () => {
+        const confirmed = confirm("Bạn có chắc muốn xóa tất cả từ bị đánh dấu?");
+        if (!confirmed) return;
+
+        vocabList = vocabList.filter(item => !item.incorrect);
+        originalOrder = originalOrder.slice(0, vocabList.length);
+
+        selectedIndex = null;
+        saveTempData();
+        displayVocabList();
+        displayIncorrectList();
+        updateIncorrectTextArea();
+    });
+
+    function makeSearchable(input, index) {
+        const value = input.value.trim();
+        if (value) {
+            vocabList[index].korean = value;
+            saveTempData();
+            const parent = input.parentElement;
+            parent.innerHTML = `<span class="korean" onclick="searchDictionary('${value}')">${value}</span>`;
+            displayIncorrectList();
+            updateIncorrectTextArea();
+        }
+    }
+
+    saveBtn.addEventListener('click', () => {
+        const content = vocabList
+            .map(item => `${item.korean} ${item.vietnamese}`)
+            .join(', ');
+
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'vocab_updated.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    });
+
+    clearTempBtn.addEventListener('click', () => {
+        localStorage.removeItem('koreanVocabData');
+        tempSaveInfo.textContent = 'Đã xóa dữ liệu tạm.';
+        setTimeout(() => {
+            tempSaveInfo.textContent = '';
+        }, 2000);
+    });
+
+    function loadVoices() {
+        const voices = speechSynthesis.getVoices();
+        vietnameseVoice = voices.find(voice => voice.lang === 'vi-VN');
+        koreanVoice = voices.find(voice => voice.lang === 'ko-KR');
+        
+        if (!vietnameseVoice) {
+            console.log('Không tìm thấy giọng tiếng Việt offline. Sử dụng giọng mặc định.');
+            vietnameseVoice = voices[0];
+        }
+        
+        if (!koreanVoice) {
+            console.log('Không tìm thấy giọng tiếng Hàn offline. Sử dụng giọng mặc định.');
+            koreanVoice = voices[0];
+        }
+    }
+
+    speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
+
+    playBtn.addEventListener('click', () => {
+        if (!isPlaying) {
+            isPlaying = true;
+            isPaused = false;
+            if (currentIndex >= vocabList.length) {
+                currentIndex = 0;
+            }
+            playWordPair(currentIndex);
+        }
+    });
+
+    stopBtn.addEventListener('click', () => {
+        isPlaying = false;
+        isPaused = false;
+        speechSynthesis.cancel();
+        removeHighlight();
+        currentWordSpan.textContent = "Đã dừng";
+        pauseBtn.textContent = "⏸️ Tạm dừng";
+    });
+
+    playSelectedBtn.addEventListener('click', () => {
+        if (selectedIndex !== null) {
+            isPlaying = false;
+            isPaused = false;
+            currentIndex = selectedIndex;
+            playWordPair(currentIndex);
+        }
+    });
+
+    pauseBtn.addEventListener('click', () => {
+        if (!isPlaying) return;
+
+        if (!isPaused) {
+            isPaused = true;
+            speechSynthesis.pause();
+            pauseBtn.textContent = "▶️ Tiếp tục";
+            currentWordSpan.textContent = "Đã tạm dừng";
+        } else {
+            isPaused = false;
+            speechSynthesis.resume();
+            pauseBtn.textContent = "⏸️ Tạm dừng";
+            const { korean, vietnamese } = vocabList[currentIndex];
+            currentWordSpan.textContent = `${korean} - ${vietnamese}`;
+        }
+    });
+
+    function removeHighlight() {
+        const highlighted = document.querySelectorAll('.highlight');
+        highlighted.forEach(item => item.classList.remove('highlight'));
+    }
+
+    function displayIncorrectList() {
+        const incorrectBody = document.getElementById('incorrectBody');
+        incorrectBody.innerHTML = '';
+
+        vocabList.forEach((item, index) => {
+            if (item.incorrect) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="text" value="${item.korean}" onblur="updateKorean(${index}, this.value)"></td>
+                    <td><input type="text" value="${item.vietnamese}" onblur="updateVietnamese(${index}, this.value)"></td>
+                `;
+                incorrectBody.appendChild(row);
+            }
+        });
+    }
+
+    function updateKorean(index, value) {
+        vocabList[index].korean = value.trim();
+        displayVocabList();
+        displayIncorrectList();
+        updateIncorrectTextArea();
+        saveTempData();
+    }
+
+    function updateVietnamese(index, value) {
+        vocabList[index].vietnamese = value.trim();
+        displayVocabList();
+        displayIncorrectList();
+        updateIncorrectTextArea();
+        saveTempData();
+    }
+
+    function updateIncorrectTextArea() {
+        const incorrectItems = vocabList.filter(item => item.incorrect);
+        const text = incorrectItems.map(item => item.korean + ' ' + item.vietnamese).join(', ');
+        document.getElementById('incorrectTextArea').value = text;
+    }
+
+    function updateFromIncorrectText() {
+        const text = document.getElementById('incorrectTextArea').value.trim();
+        if (!text) return;
+
+        const pairs = text.split(',').map(pair => pair.trim());
+
+        let incorrectIndex = 0;
+        for (let i = 0; i < vocabList.length; i++) {
+            if (vocabList[i].incorrect && incorrectIndex < pairs.length) {
+                const parts = pairs[incorrectIndex].split(' ', 2);
+                if (parts.length === 2) {
+                    vocabList[i].korean = parts[0];
+                    vocabList[i].vietnamese = pairs[incorrectIndex].substring(parts[0].length + 1).trim();
+                }
+                incorrectIndex++;
+            }
+        }
+
+        displayVocabList();
+        displayIncorrectList();
+        updateIncorrectTextArea();
+        saveTempData();
+    }
+
+    // Gán các hàm vào window để có thể gọi từ HTML
+    window.searchDictionary = searchDictionary;
+    window.saveEdit = saveEdit;
+    window.selectRow = selectRow;
+    window.makeSearchable = makeSearchable;
+    window.toggleIncorrect = toggleIncorrect;
+    window.updateKorean = updateKorean;
+    window.updateVietnamese = updateVietnamese;
+    window.updateFromIncorrectText = updateFromIncorrectText;
+    window.handlePaste = handlePaste;
+
+
+function addBulkWords() {
+    const text = document.getElementById('bulkInput').value.trim();
+    if (!text) return;
+
+    const pairs = text.split(',').map(pair => pair.trim());
+    let insertIndex = selectedIndex !== null ? selectedIndex + 1 : vocabList.length;
+
+    pairs.forEach(pair => {
+        const parts = pair.split(' ', 2);
+        if (parts.length === 2) {
+            const korean = parts[0];
+            const vietnamese = pair.substring(korean.length + 1).trim();
+            vocabList.splice(insertIndex, 0, { korean, vietnamese, incorrect: false });
+            originalOrder.splice(insertIndex, 0, vocabList.length - 1);
+            insertIndex++;
+        }
+    });
+
+    saveTempData();
+    displayVocabList();
+    displayIncorrectList();
+    updateIncorrectTextArea();
+    document.getElementById('bulkInput').value = '';
+}
+
+</script>
+</body>
+</html>
