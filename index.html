@@ -45,6 +45,7 @@
             margin-bottom: 15px;
             display: flex;
             align-items: center;
+            flex-wrap: wrap; /* Cho phép xuống dòng trên màn hình nhỏ */
         }
         label {
             display: inline-block;
@@ -63,7 +64,7 @@
             margin-right: 5px;
         }
         .checkbox-label {
-            width: auto; 
+            width: 200px; 
             margin-left: 5px;
             margin-right: 20px;
         }
@@ -176,6 +177,19 @@
         .stats-table th {
             background-color: #e9ecef;
         }
+        .sound-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .sound-checkbox-item {
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -225,66 +239,59 @@
         <div class="panel">
             <div class="panel-title">🎵 Cài Đặt Âm Thanh Thông Báo</div>
             
-            <div class="control-group">
+            <div class="control-group" style="align-items: flex-start; flex-direction: column;">
                 <button onclick="toggleDefaultSounds()" id="defaultSoundToggle" style="margin-bottom: 15px; padding: 10px 15px; background: #f6465d; color: white; border: none; border-radius: 4px; cursor: pointer;">
                     🔇 Tắt Âm Thanh Mặc Định
                 </button>
-            </div>
 
-            <div class="control-group">
-                <label for="globalNotifySoundInput">Âm thanh thông báo chung:</label>
-                <input type="file" id="globalNotifySoundInput" accept=".mp3">
-                <input type="checkbox" id="useGlobalSound">
-                <label for="useGlobalSound" class="checkbox-label">Sử dụng</label>
+                <div class="control-group">
+                    <label for="globalNotifySoundInput">Tải File Âm Thanh (Chung):</label>
+                    <input type="file" id="globalNotifySoundInput" accept=".mp3" style="width: 250px;">
+                </div>
             </div>
             
-            <div class="control-group">
-                <label for="openSoundInput">Mở lệnh:</label>
-                <input type="file" id="openSoundInput" accept=".mp3">
-                <input type="checkbox" id="useOpenSound">
-                <label for="useOpenSound" class="checkbox-label">Sử dụng</label>
-            </div>
+            <p>Chọn các thông báo sẽ sử dụng File Âm Thanh Chung đã tải lên:</p>
             
-            <div class="control-group">
-                <label for="tpSoundInput">Take Profit:</label>
-                <input type="file" id="tpSoundInput" accept=".mp3">
-                <input type="checkbox" id="useTpSound">
-                <label for="useTpSound" class="checkbox-label">Sử dụng</label>
-            </div>
-            
-            <div class="control-group">
-                <label for="slSoundInput">Stop Loss:</label>
-                <input type="file" id="slSoundInput" accept=".mp3">
-                <input type="checkbox" id="useSlSound">
-                <label for="useSlSound" class="checkbox-label">Sử dụng</label>
-            </div>
-            
-            <div class="control-group">
-                <label for="alertSoundInput">Cảnh báo giá:</label>
-                <input type="file" id="alertSoundInput" accept=".mp3">
-                <input type="checkbox" id="useAlertSound">
-                <label for="useAlertSound" class="checkbox-label">Sử dụng</label>
-            </div>
-            
-            <div class="control-group">
-                <label for="intersectionSoundInput">Giao nhau:</label>
-                <input type="file" id="intersectionSoundInput" accept=".mp3">
-                <input type="checkbox" id="useIntersectionSound">
-                <label for="useIntersectionSound" class="checkbox-label">Sử dụng</label>
-            </div>
-            
-            <div class="control-group">
-                <label for="suggestionSoundInput">Gợi ý:</label>
-                <input type="file" id="suggestionSoundInput" accept=".mp3">
-                <input type="checkbox" id="useSuggestionSound">
-                <label for="useSuggestionSound" class="checkbox-label">Sử dụng</label>
-            </div>
-            
-            <div class="control-group">
-                <label for="priceStagnantSoundInput">Giá đứng im:</label>
-                <input type="file" id="priceStagnantSoundInput" accept=".mp3">
-                <input type="checkbox" id="usePriceStagnantSound">
-                <label for="usePriceStagnantSound" class="checkbox-label">Sử dụng</label>
+            <div class="sound-checkboxes">
+                <div class="sound-checkbox-item">
+                    <input type="checkbox" id="useOpenSound">
+                    <label for="useOpenSound" class="checkbox-label" style="width: auto;">Mở lệnh</label>
+                </div>
+                
+                <div class="sound-checkbox-item">
+                    <input type="checkbox" id="useTpSound">
+                    <label for="useTpSound" class="checkbox-label" style="width: auto;">Take Profit</label>
+                </div>
+                
+                <div class="sound-checkbox-item">
+                    <input type="checkbox" id="useSlSound">
+                    <label for="useSlSound" class="checkbox-label" style="width: auto;">Stop Loss</label>
+                </div>
+                
+                <div class="sound-checkbox-item">
+                    <input type="checkbox" id="useAlertSound">
+                    <label for="useAlertSound" class="checkbox-label" style="width: auto;">Cảnh báo giá</label>
+                </div>
+                
+                <div class="sound-checkbox-item">
+                    <input type="checkbox" id="useIntersectionSound">
+                    <label for="useIntersectionSound" class="checkbox-label" style="width: auto;">Giao nhau (B/G)</label>
+                </div>
+                
+                <div class="sound-checkbox-item">
+                    <input type="checkbox" id="useSuggestionSound">
+                    <label for="useSuggestionSound" class="checkbox-label" style="width: auto;">Gợi ý (Buy/Sell)</label>
+                </div>
+
+                <div class="sound-checkbox-item">
+                    <input type="checkbox" id="usePriceStagnantSound">
+                    <label for="usePriceStagnantSound" class="checkbox-label" style="width: auto;">Giá đứng im</label>
+                </div>
+                
+                <div class="sound-checkbox-item" style="display: none;">
+                    <input type="checkbox" id="useGlobalSound">
+                    <label for="useGlobalSound" class="checkbox-label" style="width: auto;">Sử dụng âm chung</label>
+                </div>
             </div>
 
             <div style="margin-top: 20px;">
@@ -415,21 +422,15 @@
         const defaultTpSound = new Audio('https://www.soundjay.com/buttons/button-09.mp3');
         const defaultSlSound = new Audio('https://www.soundjay.com/buttons/button-10.mp3');
         const defaultAlertSound = new Audio('https://www.soundjay.com/buttons/sounds/beep-07.mp3');
-        const defaultGlobalNotifySound = new Audio('https://www.soundjay.com/buttons/sounds/beep-07.mp3');
         const defaultIntersectionSound = defaultAlertSound;
         const defaultSuggestionSound = defaultAlertSound;
         const defaultPriceStagnantSound = defaultAlertSound;
 
         // Âm thanh người dùng (sẽ được tải từ localStorage)
-        let userOpenSound = null;
-        let userTpSound = null;
-        let userSlSound = null;
-        let userAlertSound = null;
-        let userIntersectionSound = null;
-        let userSuggestionSound = null;
-        let userPriceStagnantSound = null;
-        let userGlobalNotifySound = null;
-        let soundConfig = JSON.parse(localStorage.getItem('soundConfig') || '{}');
+        let userGlobalNotifySound = null; 
+        
+        // Lưu trạng thái tích chọn của từng loại âm thanh
+        let soundUseStatus = JSON.parse(localStorage.getItem('soundUseStatus')) || {};
         
         // Thêm các biến phát hiện giá đứng im
         let lastPriceUpdateTime = null;
@@ -589,38 +590,41 @@
 
         // Lưu tất cả cấu hình âm thanh
         function saveAllSoundSettings() {
-            // Danh sách các loại âm thanh và id tương ứng
+            const globalFileInput = document.getElementById('globalNotifySoundInput');
+            
+            // 1. Xử lý file âm thanh chung (chỉ tải 1 lần)
+            const f = globalFileInput?.files[0];
+            let newGlobalUrl = localStorage.getItem('globalSoundUrl');
+            
+            if (f) {
+                // Tạo URL tạm thời và lưu
+                newGlobalUrl = URL.createObjectURL(f);
+                userGlobalNotifySound = new Audio(newGlobalUrl); 
+                localStorage.setItem('globalSoundUrl', newGlobalUrl);
+            } else if (newGlobalUrl) {
+                 // Tải lại audio từ URL đã lưu nếu không chọn file mới
+                 userGlobalNotifySound = new Audio(newGlobalUrl); 
+            } else {
+                userGlobalNotifySound = null;
+            }
+
+            // 2. Xử lý trạng thái tích chọn
             const soundTypes = [
-                { id: 'globalNotifySoundInput', key: 'globalNotifySound', var: 'userGlobalNotifySound', useId: 'useGlobalSound', type: 'global' },
-                { id: 'openSoundInput', key: 'openSound', var: 'userOpenSound', useId: 'useOpenSound', type: 'open' },
-                { id: 'tpSoundInput', key: 'tpSound', var: 'userTpSound', useId: 'useTpSound', type: 'tp' },
-                { id: 'slSoundInput', key: 'slSound', var: 'userSlSound', useId: 'useSlSound', type: 'sl' },
-                { id: 'alertSoundInput', key: 'alertSound', var: 'userAlertSound', useId: 'useAlertSound', type: 'alert' },
-                { id: 'intersectionSoundInput', key: 'intersectionSound', var: 'userIntersectionSound', useId: 'useIntersectionSound', type: 'intersection' },
-                { id: 'suggestionSoundInput', key: 'suggestionSound', var: 'userSuggestionSound', useId: 'useSuggestionSound', type: 'suggestion' },
-                { id: 'priceStagnantSoundInput', key: 'priceStagnantSound', var: 'userPriceStagnantSound', useId: 'usePriceStagnantSound', type: 'priceStagnant' },
+                { id: 'useOpenSound', type: 'open' },
+                { id: 'useTpSound', type: 'tp' },
+                { id: 'useSlSound', type: 'sl' },
+                { id: 'useAlertSound', type: 'alert' },
+                { id: 'useIntersectionSound', type: 'intersection' },
+                { id: 'useSuggestionSound', type: 'suggestion' },
+                { id: 'usePriceStagnantSound', type: 'priceStagnant' },
             ];
 
-            let newSoundConfig = soundConfig;
-
             soundTypes.forEach(s => {
-                const f = document.getElementById(s.id)?.files[0];
-                const use = document.getElementById(s.useId)?.checked || false;
-
-                newSoundConfig[s.type] = newSoundConfig[s.type] || {};
-                newSoundConfig[s.type].use = use;
-                
-                if (f) {
-                    const u = URL.createObjectURL(f);
-                    window[s.var] = new Audio(u); // Cập nhật biến toàn cục
-                    newSoundConfig[s.type].url = u;
-                } else {
-                    // Cập nhật trạng thái 'use' ngay cả khi không có file mới
-                }
+                const use = document.getElementById(s.id)?.checked || false;
+                soundUseStatus[s.type] = use;
             });
 
-            soundConfig = newSoundConfig;
-            localStorage.setItem('soundConfig', JSON.stringify(soundConfig));
+            localStorage.setItem('soundUseStatus', JSON.stringify(soundUseStatus));
             
             alert('✅ Đã lưu cấu hình âm thanh');
             logStatus('🎵 Đã lưu cấu hình âm thanh');
@@ -628,73 +632,67 @@
 
         // Tải cấu hình âm thanh từ localStorage
         function loadSoundSettings() {
+            // Tải URL âm thanh chung
+            const globalUrl = localStorage.getItem('globalSoundUrl');
+            if (globalUrl) {
+                userGlobalNotifySound = new Audio(globalUrl);
+            }
+
+            // Tải trạng thái tích chọn
+            soundUseStatus = JSON.parse(localStorage.getItem('soundUseStatus') || '{}');
+            
             const soundTypes = [
-                { key: 'globalNotifySound', var: 'userGlobalNotifySound', useId: 'useGlobalSound', default: defaultGlobalNotifySound, type: 'global' },
-                { key: 'openSound', var: 'userOpenSound', useId: 'useOpenSound', default: defaultOpenSound, type: 'open' },
-                { key: 'tpSound', var: 'userTpSound', useId: 'useTpSound', default: defaultTpSound, type: 'tp' },
-                { key: 'slSound', var: 'userSlSound', useId: 'useSlSound', default: defaultSlSound, type: 'sl' },
-                { key: 'alertSound', var: 'userAlertSound', useId: 'useAlertSound', default: defaultAlertSound, type: 'alert' },
-                { key: 'intersectionSound', var: 'userIntersectionSound', useId: 'useIntersectionSound', default: defaultIntersectionSound, type: 'intersection' },
-                { key: 'suggestionSound', var: 'userSuggestionSound', useId: 'useSuggestionSound', default: defaultSuggestionSound, type: 'suggestion' },
-                { key: 'priceStagnantSound', var: 'userPriceStagnantSound', useId: 'usePriceStagnantSound', default: defaultPriceStagnantSound, type: 'priceStagnant' },
+                { id: 'useOpenSound', type: 'open' },
+                { id: 'useTpSound', type: 'tp' },
+                { id: 'useSlSound', type: 'sl' },
+                { id: 'useAlertSound', type: 'alert' },
+                { id: 'useIntersectionSound', type: 'intersection' },
+                { id: 'useSuggestionSound', type: 'suggestion' },
+                { id: 'usePriceStagnantSound', type: 'priceStagnant' },
             ];
 
-            soundConfig = JSON.parse(localStorage.getItem('soundConfig') || '{}');
-
             soundTypes.forEach(s => {
-                const config = soundConfig[s.type];
-                
-                if (config && config.url) {
-                    window[s.var] = new Audio(config.url);
-                } else {
-                    window[s.var] = null; // Không có URL người dùng
-                }
-
-                if (document.getElementById(s.useId)) {
-                    document.getElementById(s.useId).checked = config?.use || false;
+                if (document.getElementById(s.id)) {
+                    // Thiết lập trạng thái tích chọn từ soundUseStatus
+                    document.getElementById(s.id).checked = soundUseStatus[s.type] || false;
                 }
             });
             
             // Cập nhật trạng thái nút bật/tắt âm mặc định
-            toggleDefaultSounds(); 
+            // Gọi lại toggleDefaultSounds() để thiết lập UI cho nút
+            if (defaultSoundsEnabled) {
+                document.getElementById('defaultSoundToggle').innerHTML = '🔇 Tắt Âm Thanh Mặc Định';
+                document.getElementById('defaultSoundToggle').style.backgroundColor = '#f6465d';
+            } else {
+                document.getElementById('defaultSoundToggle').innerHTML = '🔊 Bật Âm Thanh Mặc Định';
+                document.getElementById('defaultSoundToggle').style.backgroundColor = '#0ecb81';
+            }
         }
 
         // Hàm lấy âm thanh theo ưu tiên
         function getSound(soundType) {
-            const config = soundConfig[soundType];
             
-            let userSoundVar, defaultSoundVar;
-            
-            switch(soundType) {
-                case 'open': userSoundVar = userOpenSound; defaultSoundVar = defaultOpenSound; break;
-                case 'tp': userSoundVar = userTpSound; defaultSoundVar = defaultTpSound; break;
-                case 'sl': userSoundVar = userSlSound; defaultSoundVar = defaultSlSound; break;
-                case 'alert': userSoundVar = userAlertSound; defaultSoundVar = defaultAlertSound; break;
-                case 'intersection': userSoundVar = userIntersectionSound; defaultSoundVar = defaultIntersectionSound; break;
-                case 'suggestion': userSoundVar = userSuggestionSound; defaultSoundVar = defaultSuggestionSound; break;
-                case 'priceStagnant': userSoundVar = userPriceStagnantSound; defaultSoundVar = defaultPriceStagnantSound; break;
-                default: userSoundVar = userGlobalNotifySound; defaultSoundVar = defaultGlobalNotifySound; break; // global
-            }
-
-            // Ưu tiên 1: Âm thanh người dùng nếu được tick và có
-            if (config?.use && userSoundVar) {
-                return userSoundVar;
-            }
-            
-            // Ưu tiên 2: Âm thanh mặc định nếu được bật
-            if (defaultSoundsEnabled && defaultSoundVar) {
-                return defaultSoundVar;
-            }
-            
-            // Ưu tiên 3: Âm thanh chung của người dùng nếu được tick và có
-            const globalConfig = soundConfig['global'];
-            if (globalConfig?.use && userGlobalNotifySound && soundType !== 'global') {
+            // Ưu tiên 1: Âm thanh chung tùy chỉnh nếu được tích
+            if (soundUseStatus[soundType] && userGlobalNotifySound) {
                 return userGlobalNotifySound;
             }
             
-            // Ưu tiên 4: Âm thanh chung mặc định
-            if (defaultSoundsEnabled && defaultGlobalNotifySound && soundType !== 'global') {
-                return defaultGlobalNotifySound;
+            let defaultSoundVar;
+            
+            switch(soundType) {
+                case 'open': defaultSoundVar = defaultOpenSound; break;
+                case 'tp': defaultSoundVar = defaultTpSound; break;
+                case 'sl': defaultSoundVar = defaultSlSound; break;
+                case 'alert': defaultSoundVar = defaultAlertSound; break;
+                case 'intersection': defaultSoundVar = defaultIntersectionSound; break;
+                case 'suggestion': defaultSoundVar = defaultSuggestionSound; break;
+                case 'priceStagnant': defaultSoundVar = defaultPriceStagnantSound; break;
+                default: return null;
+            }
+
+            // Ưu tiên 2: Âm thanh mặc định nếu được bật
+            if (defaultSoundsEnabled && defaultSoundVar) {
+                return defaultSoundVar;
             }
             
             return null; // Không có âm thanh nào
@@ -708,7 +706,6 @@
                 if (soundToPlay) {
                     soundToPlay.currentTime = 0;
                     // Lỗi ở đây (lỗi Promise) thường xảy ra khi trình duyệt chặn autoplay.
-                    // Sử dụng catch để bỏ qua lỗi và không làm crash ứng dụng.
                     soundToPlay.play().catch(e => console.log(`Lỗi phát âm thanh (${soundType}):`, e));
                 }
                 
@@ -717,6 +714,8 @@
             }
         }
         
+        // ********************* CÁC HÀM GIAO DỊCH *********************
+
         // Lưu cài đặt Gợi ý mới
         function saveSuggestionSettings() {
             suggestionSettings.minSlope = parseFloat(document.getElementById('minSlope').value);
@@ -786,8 +785,16 @@
         function resetData() {
             if (!confirm('Bạn có chắc chắn muốn reset tất cả dữ liệu? Mọi cài đặt và lịch sử sẽ bị xóa!')) return;
 
-            localStorage.clear(); // Xóa toàn bộ localStorage để reset
-            
+            // Xóa các mục cần thiết trong localStorage
+            localStorage.removeItem('tradingSettings');
+            localStorage.removeItem('balanceHistory');
+            localStorage.removeItem('suggestionSettings');
+            localStorage.removeItem('suggestionStats');
+            localStorage.removeItem('globalSoundUrl'); // Xóa URL âm thanh chung
+            localStorage.removeItem('soundUseStatus'); // Xóa trạng thái tích chọn âm thanh
+            localStorage.removeItem('defaultSoundsEnabled');
+
+            // Khởi tạo lại các biến
             virtualBalance = 1000;
             tradesToday = 0;
             balanceHistory = [];
@@ -795,32 +802,28 @@
             alertLevels = [];
             alertedLevels.clear();
             alertedIntersectionIndices.clear();
-            soundConfig = {};
+            userGlobalNotifySound = null; 
+            soundUseStatus = {};
+            defaultSoundsEnabled = true;
 
-            // Reset Settings
-            document.getElementById('virtualBalance').value = 1000;
-            document.getElementById('leverage').value = 10;
-            document.getElementById('lotSize').value = 0.1;
-            document.getElementById('stopLoss').value = 50;
-            document.getElementById('takeProfit').value = 65;
+            // Reset UI
+            loadTradingSettings(); // Cài đặt giao dịch (sẽ load giá trị mặc định)
+            loadSuggestionSettings(); // Cài đặt gợi ý (sẽ load giá trị mặc định)
             document.getElementById('alertPrices').value = '';
             
             // Reset UI cho Sound Settings
-            const checkboxes = document.querySelectorAll('.panel input[type="checkbox"]');
+            const checkboxes = document.querySelectorAll('.sound-checkboxes input[type="checkbox"]');
             checkboxes.forEach(cb => cb.checked = false);
-            document.getElementById('defaultSoundToggle').innerHTML = '🔇 Tắt Âm Thanh Mặc Định';
-            document.getElementById('defaultSoundToggle').style.backgroundColor = '#f6465d';
-
+            document.getElementById('globalNotifySoundInput').value = ''; // Xóa file đã chọn
+            
             document.getElementById('historyList').innerHTML = '';
             document.getElementById('activeTrades').style.display = 'none';
             document.getElementById('currentTradeDetails').innerHTML = '';
             
-            // Reset Suggestion Settings/Stats
-            resetSuggestionData();
-            loadSuggestionSettings(); 
+            // Reset Sound Toggle
+            loadSoundSettings(); // Cập nhật lại nút
             
-            // Reload sound objects (sẽ được thực hiện qua loadSoundSettings trong window.onload)
-            loadSoundSettings(); // Gọi lại để reset biến global
+            resetSuggestionData();
             
             updateStatus();
             drawBalanceChart();
@@ -863,7 +866,7 @@
             logStatus('🛑 Dừng giao dịch tự động');
         }
 
-        // Tạo lệnh mới
+        // Tạo lệnh mới (LOGIC GỐC MỞ 2 LỆNH BUY/SELL)
         function createNewTrades() {
              if (!autoTradingActive || currentPrice === 0 || virtualBalance < 100) {
                 stopAutoTrading();
@@ -876,7 +879,8 @@
             const lotSize = parseFloat(document.getElementById('lotSize').value);
             const leverage = parseInt(document.getElementById('leverage').value);
             
-            tradesToday++; // Tăng tradesToday để có chỉ số lệnh
+            // Tăng tradesToday hai lần để có hai chỉ số lệnh
+            tradesToday++; 
             const tradeIndex1 = tradesToday;
             tradesToday++;
             const tradeIndex2 = tradesToday;
@@ -897,8 +901,8 @@
                     type: 'SELL',
                     entryPrice: price,
                     entryTime: new Date().toLocaleString('vi-VN'),
-                    stopLoss: price + sl,
-                    takeProfit: price - tp,
+                    stopLoss: price + sl, // SELL: SL nằm trên giá vào
+                    takeProfit: price - tp, // SELL: TP nằm dưới giá vào
                     lotSize,
                     leverage,
                     closed: false,
@@ -917,11 +921,7 @@
             saveTradingSettings();
         }
         
-        // **********************************************
-        // THÊM/SỬA CÁC HÀM BỊ THIẾU/QUAN TRỌNG TỪ ĐÂY
-        // **********************************************
-
-        // Hàm kiểm tra lệnh (QUAN TRỌNG: Thiếu trong bản gốc)
+        // Hàm kiểm tra lệnh
         function checkTrades() {
             if (!autoTradingActive || currentTrades.length === 0 || isWaitingNewTrades) return;
             
@@ -933,10 +933,12 @@
                 allClosed = false;
                 let closeReason = '';
                 
+                // Kiểm tra SL
                 if ((trade.type === 'BUY' && currentPrice <= trade.stopLoss) || 
                     (trade.type === 'SELL' && currentPrice >= trade.stopLoss)) {
                     closeReason = 'STOP LOSS';
                 } 
+                // Kiểm tra TP
                 else if ((trade.type === 'BUY' && currentPrice >= trade.takeProfit) || 
                          (trade.type === 'SELL' && currentPrice <= trade.takeProfit)) {
                     closeReason = 'TAKE PROFIT';
@@ -947,6 +949,7 @@
                 }
             });
             
+            // Nếu cả hai lệnh đều đã đóng, tạo lệnh mới sau 3 giây
             if (allClosed && autoTradingActive) {
                 currentTrades = []; // Xóa các lệnh đã đóng
                 isWaitingNewTrades = true;
@@ -962,7 +965,7 @@
             }
         }
 
-        // Hàm cập nhật mốc cảnh báo (Thiếu trong bản gốc)
+        // Hàm cập nhật mốc cảnh báo 
         function updateAlertLevels() {
             const input = document.getElementById('alertPrices').value;
             alertLevels = input.split(',')
@@ -974,7 +977,7 @@
             alert('✅ Đã lưu mốc giá cảnh báo!');
         }
 
-        // Hàm kiểm tra cảnh báo giá (Thiếu trong bản gốc)
+        // Hàm kiểm tra cảnh báo giá 
         function checkPriceAlerts(oldPrice, newPrice) {
             if (alertLevels.length === 0 || oldPrice === 0 || oldPrice === newPrice) return;
 
@@ -989,13 +992,13 @@
             });
         }
         
-        // Hàm xóa lịch sử (Thiếu trong bản gốc)
+        // Hàm xóa lịch sử 
         function clearHistory() {
             document.getElementById('historyList').innerHTML = '';
             logStatus('🧹 Đã xóa lịch sử hiển thị');
         }
 
-        // Hàm phân tích hiệu suất (Thiếu trong bản gốc)
+        // Hàm phân tích hiệu suất (Giữ nguyên)
         function analyzeBalanceHistory() {
             if (!balanceHistory || balanceHistory.length === 0) {
                 alert("Không có dữ liệu giao dịch!");
@@ -1033,7 +1036,7 @@
 
             alert(
                 `📈 Số dư cao nhất: ${max.balance.toFixed(2)} USD (Lệnh #${max.tradeIndex}) (Giá Vàng: ${max.goldPrice.toFixed(2)} USD)\n` +
-                `📉 Số dư thấp nhất: ${min.balance.toFixed(2)} USD (Lệnh #${min.tradeIndex}) (Giá Vàng: ${min.goldPrice.toFixed(2)} USD)\n\n` +
+                `📉 Số dư thấp nhất: ${min.balance.toFixed(2)} USD (Lệnh #${minIndex}) (Giá Vàng: ${min.goldPrice.toFixed(2)} USD)\n\n` +
                 `💰 Lợi nhuận trung bình mỗi lệnh: ${avgProfit} USD\n` +
                 `🌟 Giá Vàng trung bình: ${avgGoldPrice} USD\n` +
                 `📊 Tỷ lệ lợi nhuận so với giá vàng (trung bình): ${profitToGoldRatio}%`
@@ -1096,11 +1099,6 @@
                 `Số dư mới: ${virtualBalance.toFixed(2)} USD`
             );
         }
-
-        // **********************************************
-        // END CÁC HÀM BỊ THIẾU/QUAN TRỌNG
-        // **********************************************
-
 
         // Cập nhật thống kê gợi ý 
         function updateSuggestionStats(trade, profit) {
@@ -1308,7 +1306,6 @@
                 playNotificationSound('suggestion');
                 
                 // Cập nhật chỉ số lệnh gần nhất
-                // Điều này giúp hàm updateSuggestionStats biết lệnh nào là lệnh tiếp theo sau gợi ý
                 suggestionStats[type].lastTradeIndex = tradesToday; 
             } else if (suggestion === null) {
                  document.getElementById('suggestionDisplay').innerHTML = 'Chưa có gợi ý nào.';
@@ -1321,11 +1318,6 @@
             
             const dsBalance = balanceChart.data.datasets[0].data;
             const dsGold = balanceChart.data.datasets[1].data;
-            const scaleL = balanceChart.scales['y'];
-            const scaleR = balanceChart.scales['y1'];
-            
-            if (!scaleL || !scaleR) return;
-            
             const len = Math.min(dsBalance.length, dsGold.length);
             
             for (let i = 1; i < len; i++) {
@@ -1431,15 +1423,6 @@
             loadSoundSettings();
             loadSuggestionSettings();
             
-            // Cài đặt âm thanh mặc định/bật/tắt đã được tải trong loadSoundSettings
-            if (defaultSoundsEnabled) {
-                document.getElementById('defaultSoundToggle').innerHTML = '🔇 Tắt Âm Thanh Mặc Định';
-                document.getElementById('defaultSoundToggle').style.backgroundColor = '#f6465d';
-            } else {
-                document.getElementById('defaultSoundToggle').innerHTML = '🔊 Bật Âm Thanh Mặc Định';
-                document.getElementById('defaultSoundToggle').style.backgroundColor = '#0ecb81';
-            }
-            
             initChart();
             connectWebSocket();
             updateAlertLevels(); // GỌI HÀM CẬP NHẬT MỐC CẢNH BÁO
@@ -1457,6 +1440,12 @@
             // Listeners cho Cài đặt Gợi ý
             ['minSlope', 'minGapPct', 'confirmDelay', 'suggestionMode'].forEach(id => {
                 document.getElementById(id).addEventListener('change', saveSuggestionSettings);
+            });
+            
+            // Listener cho File Input để lưu file ngay sau khi chọn (trước khi nhấn Lưu Cấu Hình)
+            document.getElementById('globalNotifySoundInput').addEventListener('change', function() {
+                // Lưu file ngay sau khi chọn (tránh mất file khi refresh)
+                saveAllSoundSettings(); 
             });
         };
     </script>
