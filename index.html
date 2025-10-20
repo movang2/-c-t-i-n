@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giao Dịch Vàng (XAU/USD) - Finnhub</title>
+    <title>Giao Dịch Vàng (XAU/USD) - Finnhub (Directional Suggestion)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -311,35 +311,67 @@
         </div>
         
         <div class="panel">
-            <div class="panel-title">⚙️ Cài Đặt Gợi Ý Giao Dịch</div>
+            <div class="panel-title">⚙️ Cài Đặt Gợi Ý Theo Hướng</div>
+            
             <div class="control-group">
-                <label for="minSlope">Độ dốc tối thiểu (Slope):</label>
-                <input type="number" id="minSlope" value="0.2" min="0.01" step="0.01">
+                <input type="checkbox" id="suggestionByDirectionEnabled" onchange="toggleSuggestionMode()">
+                <label for="suggestionByDirectionEnabled" class="checkbox-label" style="width: 250px;">**[Bật/Tắt] Gợi ý Theo Hướng**</label>
+                <button onclick="saveDirectionalSettings()" style="margin-left: 20px;">Lưu Cài Đặt</button>
             </div>
-            <div class="control-group">
-                <label for="minGapPct">Khoảng cách tối thiểu (%):</label>
-                <input type="number" id="minGapPct" value="0.3" min="0.05" step="0.05">
-            </div>
-            <div class="control-group">
-                <label for="confirmDelay">Độ trễ xác nhận (điểm):</label>
-                <input type="number" id="confirmDelay" value="1" min="1" step="1">
-            </div>
-            <div class="control-group">
-                <label for="suggestionMode">Chế độ hiển thị:</label>
-                <select id="suggestionMode">
-                    <option value="all">Tất cả</option>
-                    <option value="buy">Chỉ MUA</option>
-                    <option value="sell">Chỉ BÁN</option>
-                </select>
-            </div>
-            <div style="margin-top: 20px;">
-                <button onclick="saveSuggestionSettings()">Lưu Cấu Hình Gợi Ý</button>
-                <button class="danger" onclick="resetSuggestionData()">Reset Gợi Ý</button>
+
+            <div id="directionalSettingsContainer" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; display: none;">
+                <div class="control-group">
+                    <label for="suggestionBaseLine">Dữ liệu cơ sở:</label>
+                    <select id="suggestionBaseLine" style="width: 200px;">
+                        <option value="balance">Đường Số Dư (USD)</option>
+                        <option value="gold">Giá Vàng (XAU/USD)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="suggestionStartIndex">Chỉ số bắt đầu (0-n):</label>
+                    <input type="number" id="suggestionStartIndex" value="0" min="0" step="1">
+                    <button onclick="updateStartIndexFromTrade()" style="margin-left: 10px; background-color: #0ecb81; color: white;">Cập nhật từ Lệnh Gần nhất</button>
+                </div>
+                <div class="control-group">
+                    <label for="directionConfirmationPoints">Số điểm xác nhận hướng:</label>
+                    <input type="number" id="directionConfirmationPoints" value="3" min="1" step="1">
+                </div>
             </div>
         </div>
-
         <div class="panel">
-            <div class="panel-title">📊 Gợi Ý Giao Dịch</div>
+            <div class="panel-title">⚙️ Cài Đặt Gợi Ý Giao Dịch CŨ (Theo Giao Nhau)</div>
+            <div class="control-group">
+                <input type="checkbox" id="suggestionByIntersectionEnabled" onchange="toggleSuggestionMode()">
+                <label for="suggestionByIntersectionEnabled" class="checkbox-label" style="width: 250px;">**[Bật/Tắt] Gợi ý Theo Giao Nhau**</label>
+            </div>
+            <div id="intersectionSettingsContainer" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; display: none;">
+                <div class="control-group">
+                    <label for="minSlope">Độ dốc tối thiểu (Slope):</label>
+                    <input type="number" id="minSlope" value="0.2" min="0.01" step="0.01">
+                </div>
+                <div class="control-group">
+                    <label for="minGapPct">Khoảng cách tối thiểu (%):</label>
+                    <input type="number" id="minGapPct" value="0.3" min="0.05" step="0.05">
+                </div>
+                <div class="control-group">
+                    <label for="confirmDelay">Độ trễ xác nhận (điểm):</label>
+                    <input type="number" id="confirmDelay" value="1" min="1" step="1">
+                </div>
+                <div class="control-group">
+                    <label for="suggestionMode">Chế độ hiển thị:</label>
+                    <select id="suggestionMode">
+                        <option value="all">Tất cả</option>
+                        <option value="buy">Chỉ MUA</option>
+                        <option value="sell">Chỉ BÁN</option>
+                    </select>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button onclick="saveIntersectionSettings()">Lưu Cấu Hình Gợi Ý</button>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-title">📊 Gợi Ý Hiện Tại</div>
             <div id="suggestionDisplay">
                 Chưa có gợi ý nào.
             </div>
@@ -357,6 +389,7 @@
                     <tr><td>SELL</td><td id="statSellTotal">0</td><td id="statSellCorrect">0</td><td id="statSellPct">0.00%</td></tr>
                 </tbody>
             </table>
+            <button class="danger" onclick="resetSuggestionData()" style="margin-top: 10px;">Reset Gợi Ý & Thống kê</button>
         </div>
         
         <div class="panel">
@@ -402,8 +435,8 @@
         let isWaitingNewTrades = false;
         let lastUpdateTime = null;
 
-        // Cấu hình Gợi ý mới
-        let suggestionSettings = JSON.parse(localStorage.getItem('suggestionSettings')) || {
+        // Cấu hình Gợi ý GIAO NHAU CŨ
+        let intersectionSettings = JSON.parse(localStorage.getItem('intersectionSettings')) || {
             minSlope: 0.2,
             minGapPct: 0.3,
             confirmDelay: 1,
@@ -413,6 +446,14 @@
             BUY: { total: 0, correct: 0, lastIndex: -1, lastTime: null, lastTradeIndex: -1 },
             SELL: { total: 0, correct: 0, lastIndex: -1, lastTime: null, lastTradeIndex: -1 }
         };
+
+        // Cấu hình Gợi ý THEO HƯỚNG MỚI
+        let suggestionByDirectionEnabled = localStorage.getItem('suggestionByDirectionEnabled') === 'true'; 
+        let suggestionByIntersectionEnabled = localStorage.getItem('suggestionByIntersectionEnabled') === 'true'; 
+        let suggestionBaseLine = localStorage.getItem('suggestionBaseLine') || 'balance'; // 'balance' hoặc 'gold'
+        let suggestionStartIndex = parseInt(localStorage.getItem('suggestionStartIndex')) || 0; // Chỉ số bắt đầu trong balanceHistory
+        let directionConfirmationPoints = parseInt(localStorage.getItem('directionConfirmationPoints')) || 3;
+        let lastDirectionalSuggestion = localStorage.getItem('lastDirectionalSuggestion') || null; // 'BUY'/'SELL'
 
         // Biến điều khiển âm thanh mặc định
         let defaultSoundsEnabled = localStorage.getItem('defaultSoundsEnabled') !== 'false';
@@ -714,27 +755,106 @@
             }
         }
         
-        // ********************* CÁC HÀM GIAO DỊCH *********************
+        // ********************* CÁC HÀM GIAO DỊCH VÀ GỢI Ý *********************
 
-        // Lưu cài đặt Gợi ý mới
-        function saveSuggestionSettings() {
-            suggestionSettings.minSlope = parseFloat(document.getElementById('minSlope').value);
-            suggestionSettings.minGapPct = parseFloat(document.getElementById('minGapPct').value);
-            suggestionSettings.confirmDelay = parseInt(document.getElementById('confirmDelay').value);
-            suggestionSettings.suggestionMode = document.getElementById('suggestionMode').value;
+        // Hàm bật/tắt chế độ gợi ý
+        function toggleSuggestionMode() {
+            suggestionByDirectionEnabled = document.getElementById('suggestionByDirectionEnabled').checked;
+            suggestionByIntersectionEnabled = document.getElementById('suggestionByIntersectionEnabled').checked;
+
+            const directionalPanel = document.getElementById('directionalSettingsContainer');
+            const intersectionPanel = document.getElementById('intersectionSettingsContainer');
             
-            localStorage.setItem('suggestionSettings', JSON.stringify(suggestionSettings));
-            logStatus('💾 Đã lưu cấu hình gợi ý giao dịch');
-            alert('✅ Đã lưu cấu hình gợi ý!');
+            // Chỉ hiển thị panel của chế độ đang bật
+            directionalPanel.style.display = suggestionByDirectionEnabled ? 'block' : 'none';
+            intersectionPanel.style.display = suggestionByIntersectionEnabled ? 'block' : 'none';
+
+            // Đảm bảo không bật cả hai cùng lúc (tùy chọn)
+            if (suggestionByDirectionEnabled && suggestionByIntersectionEnabled) {
+                if (confirm("Bạn chỉ nên bật một chế độ gợi ý. Tắt Giao nhau?")) {
+                    document.getElementById('suggestionByIntersectionEnabled').checked = false;
+                    suggestionByIntersectionEnabled = false;
+                    intersectionPanel.style.display = 'none';
+                } else {
+                    document.getElementById('suggestionByDirectionEnabled').checked = false;
+                    suggestionByDirectionEnabled = false;
+                    directionalPanel.style.display = 'none';
+                }
+            } else if (!suggestionByDirectionEnabled && !suggestionByIntersectionEnabled) {
+                document.getElementById('suggestionDisplay').innerHTML = 'Chưa có chế độ gợi ý nào được bật.';
+            }
+
+            localStorage.setItem('suggestionByDirectionEnabled', suggestionByDirectionEnabled);
+            localStorage.setItem('suggestionByIntersectionEnabled', suggestionByIntersectionEnabled);
+            
+            logStatus(`Gợi ý Theo Hướng: ${suggestionByDirectionEnabled ? 'Bật' : 'Tắt'} | Gợi ý Giao nhau: ${suggestionByIntersectionEnabled ? 'Bật' : 'Tắt'}`);
+            drawBalanceChart(); // Vẽ lại để kích hoạt logic gợi ý mới
         }
 
-        // Tải cài đặt Gợi ý
-        function loadSuggestionSettings() {
-            if (suggestionSettings) {
-                document.getElementById('minSlope').value = suggestionSettings.minSlope;
-                document.getElementById('minGapPct').value = suggestionSettings.minGapPct;
-                document.getElementById('confirmDelay').value = suggestionSettings.confirmDelay;
-                document.getElementById('suggestionMode').value = suggestionSettings.suggestionMode;
+        // Lưu cài đặt Gợi ý theo Hướng
+        function saveDirectionalSettings() {
+            suggestionBaseLine = document.getElementById('suggestionBaseLine').value;
+            suggestionStartIndex = parseInt(document.getElementById('suggestionStartIndex').value);
+            directionConfirmationPoints = parseInt(document.getElementById('directionConfirmationPoints').value);
+            
+            localStorage.setItem('suggestionBaseLine', suggestionBaseLine);
+            localStorage.setItem('suggestionStartIndex', suggestionStartIndex);
+            localStorage.setItem('directionConfirmationPoints', directionConfirmationPoints);
+            
+            logStatus('💾 Đã lưu cấu hình gợi ý theo hướng');
+            drawBalanceChart();
+            alert('✅ Đã lưu cấu hình gợi ý theo hướng!');
+        }
+
+        // Tải cài đặt Gợi ý theo Hướng
+        function loadDirectionalSettings() {
+            document.getElementById('suggestionByDirectionEnabled').checked = suggestionByDirectionEnabled;
+            document.getElementById('suggestionByIntersectionEnabled').checked = suggestionByIntersectionEnabled;
+            document.getElementById('suggestionBaseLine').value = suggestionBaseLine;
+            document.getElementById('suggestionStartIndex').value = suggestionStartIndex;
+            document.getElementById('directionConfirmationPoints').value = directionConfirmationPoints;
+            
+            // Không gọi toggleSuggestionMode ở đây, để nó được gọi trong window.onload sau khi load settings cũ
+        }
+        
+        // Hàm cập nhật điểm bắt đầu từ lệnh gần nhất
+        function updateStartIndexFromTrade() {
+            if (balanceHistory.length === 0) {
+                alert("Chưa có lịch sử giao dịch để lấy điểm.");
+                return;
+            }
+            // Lấy chỉ số cuối cùng (tương đương lệnh đóng gần nhất)
+            const newStartIndex = balanceHistory.length - 1; 
+            document.getElementById('suggestionStartIndex').value = newStartIndex;
+            suggestionStartIndex = newStartIndex;
+            localStorage.setItem('suggestionStartIndex', newStartIndex);
+            
+            lastDirectionalSuggestion = null; // Reset để tìm hướng mới ngay lập tức
+            localStorage.setItem('lastDirectionalSuggestion', null);
+
+            saveDirectionalSettings(); // Lưu và kích hoạt
+            logStatus(`🔄 Cập nhật điểm bắt đầu gợi ý theo hướng sang điểm cuối cùng: #${newStartIndex}`);
+        }
+
+        // Lưu cài đặt Gợi ý Giao nhau (Đổi tên)
+        function saveIntersectionSettings() {
+            intersectionSettings.minSlope = parseFloat(document.getElementById('minSlope').value);
+            intersectionSettings.minGapPct = parseFloat(document.getElementById('minGapPct').value);
+            intersectionSettings.confirmDelay = parseInt(document.getElementById('confirmDelay').value);
+            intersectionSettings.suggestionMode = document.getElementById('suggestionMode').value;
+            
+            localStorage.setItem('intersectionSettings', JSON.stringify(intersectionSettings));
+            logStatus('💾 Đã lưu cấu hình gợi ý giao dịch (Giao nhau)');
+            alert('✅ Đã lưu cấu hình gợi ý giao nhau!');
+        }
+
+        // Tải cài đặt Gợi ý Giao nhau (Đổi tên)
+        function loadIntersectionSettings() {
+            if (intersectionSettings) {
+                document.getElementById('minSlope').value = intersectionSettings.minSlope;
+                document.getElementById('minGapPct').value = intersectionSettings.minGapPct;
+                document.getElementById('confirmDelay').value = intersectionSettings.confirmDelay;
+                document.getElementById('suggestionMode').value = intersectionSettings.suggestionMode;
             }
         }
         
@@ -745,7 +865,14 @@
                 BUY: { total: 0, correct: 0, lastIndex: -1, lastTime: null, lastTradeIndex: -1 },
                 SELL: { total: 0, correct: 0, lastIndex: -1, lastTime: null, lastTradeIndex: -1 }
             };
+            lastDirectionalSuggestion = null;
+            suggestionStartIndex = 0; // Reset index về 0
+
             localStorage.removeItem('suggestionStats');
+            localStorage.removeItem('lastDirectionalSuggestion');
+            localStorage.setItem('suggestionStartIndex', 0); // Lưu lại index
+            
+            document.getElementById('suggestionStartIndex').value = 0; // Cập nhật UI
             document.getElementById('suggestionDisplay').innerHTML = 'Chưa có gợi ý nào.';
             updateSuggestionStatsDisplay();
             logStatus('🔄 Đã reset dữ liệu gợi ý và thống kê');
@@ -788,11 +915,19 @@
             // Xóa các mục cần thiết trong localStorage
             localStorage.removeItem('tradingSettings');
             localStorage.removeItem('balanceHistory');
-            localStorage.removeItem('suggestionSettings');
+            localStorage.removeItem('intersectionSettings');
             localStorage.removeItem('suggestionStats');
-            localStorage.removeItem('globalSoundUrl'); // Xóa URL âm thanh chung
-            localStorage.removeItem('soundUseStatus'); // Xóa trạng thái tích chọn âm thanh
+            localStorage.removeItem('globalSoundUrl');
+            localStorage.removeItem('soundUseStatus');
             localStorage.removeItem('defaultSoundsEnabled');
+            // Xóa cài đặt mới
+            localStorage.removeItem('suggestionByDirectionEnabled');
+            localStorage.removeItem('suggestionByIntersectionEnabled');
+            localStorage.removeItem('suggestionBaseLine');
+            localStorage.removeItem('suggestionStartIndex');
+            localStorage.removeItem('directionConfirmationPoints');
+            localStorage.removeItem('lastDirectionalSuggestion');
+
 
             // Khởi tạo lại các biến
             virtualBalance = 1000;
@@ -805,10 +940,23 @@
             userGlobalNotifySound = null; 
             soundUseStatus = {};
             defaultSoundsEnabled = true;
+            // Khởi tạo lại biến gợi ý
+            suggestionByDirectionEnabled = false;
+            suggestionByIntersectionEnabled = false;
+            suggestionBaseLine = 'balance';
+            suggestionStartIndex = 0;
+            directionConfirmationPoints = 3;
+            lastDirectionalSuggestion = null;
+            suggestionStats = {
+                BUY: { total: 0, correct: 0, lastIndex: -1, lastTime: null, lastTradeIndex: -1 },
+                SELL: { total: 0, correct: 0, lastIndex: -1, lastTime: null, lastTradeIndex: -1 }
+            };
 
             // Reset UI
             loadTradingSettings(); // Cài đặt giao dịch (sẽ load giá trị mặc định)
-            loadSuggestionSettings(); // Cài đặt gợi ý (sẽ load giá trị mặc định)
+            loadIntersectionSettings(); // Cài đặt gợi ý cũ (sẽ load giá trị mặc định)
+            loadDirectionalSettings(); // Cài đặt gợi ý mới (sẽ load giá trị mặc định)
+
             document.getElementById('alertPrices').value = '';
             
             // Reset UI cho Sound Settings
@@ -823,7 +971,8 @@
             // Reset Sound Toggle
             loadSoundSettings(); // Cập nhật lại nút
             
-            resetSuggestionData();
+            resetSuggestionData(); // Reset thống kê UI
+            toggleSuggestionMode(); // Cập nhật UI panel settings
             
             updateStatus();
             drawBalanceChart();
@@ -1042,6 +1191,30 @@
                 `📊 Tỷ lệ lợi nhuận so với giá vàng (trung bình): ${profitToGoldRatio}%`
             );
         }
+        
+        // Hàm tìm điểm đảo chiều gần nhất sau khi trade đóng (dùng làm suggestionStartIndex mới)
+        function findNearestDirectionChangeIndex(dataArray, closeIndex, tradeType) {
+            if (closeIndex < 2) return 0;
+            
+            // Hướng kỳ vọng của trade vừa đóng
+            const currentDirection = tradeType; 
+
+            // Tìm điểm (i) mà hướng đi của dataArray[i-1] đến dataArray[i] NGƯỢC với currentDirection
+            for (let i = closeIndex - 1; i >= 1; i--) {
+                const diff = dataArray[i] - dataArray[i-1];
+                
+                let direction = diff >= 0 ? 'BUY' : 'SELL';
+                
+                // Nếu hướng đổi ngược lại so với lệnh vừa đóng
+                if (direction !== currentDirection) {
+                    // Trả về điểm đảo chiều (i-1 là điểm trước khi đảo chiều)
+                    // Cập nhật điểm bắt đầu là điểm ngay sau điểm đảo chiều (tức là i)
+                    return i; 
+                }
+            }
+            // Nếu không tìm thấy, trả về 0 (bắt đầu lại)
+            return 0;
+        }
 
         // Đóng lệnh 
         function closeTrade(trade, closePrice, reason) {
@@ -1072,6 +1245,29 @@
                 lotSize: trade.lotSize,
                 tradeIndex: trade.tradeIndex // Thêm index để tham chiếu
             });
+            
+            // ************* LOGIC CẬP NHẬT GỢI Ý THEO HƯỚNG *************
+            if (suggestionByDirectionEnabled) {
+                const dsBalance = balanceHistory.map(item => item.balance);
+                const dsGold = balanceHistory.map(item => item.goldPrice);
+                const dataArray = (suggestionBaseLine === 'balance' ? dsBalance : dsGold);
+                
+                // Index của điểm gần nhất (điểm đóng lệnh) trong balanceHistory
+                const closeIndex = balanceHistory.length - 1; 
+                
+                // Tìm điểm đảo chiều mới
+                const newStartIndex = findNearestDirectionChangeIndex(dataArray, closeIndex, trade.type);
+                
+                suggestionStartIndex = newStartIndex; // Cập nhật chỉ số mới
+                lastDirectionalSuggestion = null; // Reset gợi ý để tìm hướng mới
+                
+                // Lưu lại
+                localStorage.setItem('suggestionStartIndex', suggestionStartIndex);
+                localStorage.setItem('lastDirectionalSuggestion', null);
+                
+                logStatus(`🔄 Gợi ý Theo Hướng: Lệnh ${trade.type} đóng. Cập nhật điểm bắt đầu sang #${newStartIndex}`);
+            }
+            // *************************************************************
 
             localStorage.setItem('balanceHistory', JSON.stringify(balanceHistory));
             saveTradingSettings();
@@ -1209,18 +1405,25 @@
 
             setTimeout(() => {
                 detectBalanceGoldIntersections();
-                checkSuggestion(); // Kích hoạt kiểm tra gợi ý sau khi vẽ biểu đồ
+                
+                if (suggestionByDirectionEnabled) {
+                    checkDirectionalSuggestion(); // Kích hoạt gợi ý theo hướng MỚI
+                } else if (suggestionByIntersectionEnabled) {
+                     checkIntersectionSuggestion(); // Kích hoạt gợi ý theo giao nhau CŨ
+                } else {
+                     document.getElementById('suggestionDisplay').innerHTML = 'Chưa có chế độ gợi ý nào được bật.';
+                }
             }, 100);
         }
 
-        // Logic Gợi ý giao dịch 
-        function checkSuggestion() {
-            if (!balanceChart) return;
+        // Logic Gợi ý giao dịch GIAO NHAU CŨ (Đã đổi tên)
+        function checkIntersectionSuggestion() {
+            if (!balanceChart || !suggestionByIntersectionEnabled) return;
 
             const dsBalance = balanceChart.data.datasets[0].data;
             const dsGold = balanceChart.data.datasets[1].data;
             const len = Math.min(dsBalance.length, dsGold.length);
-            const { minSlope, minGapPct, confirmDelay, suggestionMode } = suggestionSettings;
+            const { minSlope, minGapPct, confirmDelay, suggestionMode } = intersectionSettings;
 
             if (len < confirmDelay + 1) return;
 
@@ -1300,17 +1503,96 @@
                 // Hiển thị
                 const display = document.getElementById('suggestionDisplay');
                 const className = suggestion.includes('BUY') ? 'suggest-buy' : 'suggest-sell';
-                display.innerHTML = `<div class="${className}">${timeLabel} | **${suggestion}** | Lý do: ${reason}</div>`;
+                display.innerHTML = `<div class="${className}">${timeLabel} | **${suggestion}** | Lý do: ${reason} (Chế độ Giao nhau)</div>`;
                 
                 logStatus(`📢 ${suggestion} Gợi ý | Lý do: ${reason}`);
                 playNotificationSound('suggestion');
                 
                 // Cập nhật chỉ số lệnh gần nhất
                 suggestionStats[type].lastTradeIndex = tradesToday; 
-            } else if (suggestion === null) {
+            } else if (suggestion === null && !suggestionByDirectionEnabled) {
                  document.getElementById('suggestionDisplay').innerHTML = 'Chưa có gợi ý nào.';
             }
         }
+        
+        // Logic Gợi ý giao dịch THEO HƯỚNG MỚI
+        function checkDirectionalSuggestion() {
+            if (!balanceChart || !suggestionByDirectionEnabled) return;
+            
+            const dsBalance = balanceChart.data.datasets[0].data;
+            const dsGold = balanceChart.data.datasets[1].data;
+            const dataArray = (suggestionBaseLine === 'balance' ? dsBalance : dsGold);
+            const len = dataArray.length;
+            
+            // Kiểm tra đủ điểm dữ liệu
+            if (len <= suggestionStartIndex + directionConfirmationPoints) {
+                document.getElementById('suggestionDisplay').innerHTML = 'Chưa đủ dữ liệu để tính hướng từ điểm bắt đầu.';
+                return;
+            }
+            
+            const startIndex = suggestionStartIndex;
+            const endIndex = len - 1; // Điểm cuối cùng trong mảng
+            const confirmPoints = directionConfirmationPoints;
+            
+            // 1. Tính toán HƯỚNG
+            // Lấy giá trị tại điểm bắt đầu
+            const startValue = dataArray[startIndex];
+            
+            // Lấy giá trị tại điểm xác nhận (cách điểm cuối cùng 1 khoảng confirmPoints)
+            const confirmationIndex = endIndex - confirmPoints;
+            if (confirmationIndex < startIndex) {
+                document.getElementById('suggestionDisplay').innerHTML = 'Chưa đủ điểm xác nhận hướng.';
+                return;
+            }
+            const confirmationValue = dataArray[confirmationIndex];
+            
+            let currentSuggestion = null;
+            let reason = '';
+            
+            if (confirmationValue > startValue) {
+                currentSuggestion = 'BUY';
+                reason = `Đường **${suggestionBaseLine === 'balance' ? 'Số Dư' : 'Giá Vàng'}** đang đi lên từ điểm #${startIndex} (${startValue.toFixed(2)} -> ${confirmationValue.toFixed(2)})`;
+            } else if (confirmationValue < startValue) {
+                currentSuggestion = 'SELL';
+                reason = `Đường **${suggestionBaseLine === 'balance' ? 'Số Dư' : 'Giá Vàng'}** đang đi xuống từ điểm #${startIndex} (${startValue.toFixed(2)} -> ${confirmationValue.toFixed(2)})`;
+            } else {
+                document.getElementById('suggestionDisplay').innerHTML = 'Đường cơ sở chưa thay đổi hướng rõ rệt.';
+                return;
+            }
+            
+            // 2. Cập nhật Màn hình & Thống kê nếu Gợi ý KHÁC gợi ý trước đó
+            if (currentSuggestion && currentSuggestion !== lastDirectionalSuggestion) {
+                const type = currentSuggestion;
+                const timeLabel = balanceChart.data.labels[endIndex];
+                
+                // Cập nhật thống kê và đánh dấu đã gợi ý tại điểm này (chỉ cần cập nhật nếu hướng đổi)
+                suggestionStats[type].lastIndex = endIndex;
+                suggestionStats[type].lastTime = timeLabel;
+                
+                localStorage.setItem('suggestionStats', JSON.stringify(suggestionStats));
+                
+                // Hiển thị
+                const display = document.getElementById('suggestionDisplay');
+                const className = type === 'BUY' ? 'suggest-buy' : 'suggest-sell';
+                display.innerHTML = `<div class="${className}">${timeLabel} | **${currentSuggestion}** | Lý do: ${reason} (Chế độ Theo Hướng)</div>`;
+                
+                logStatus(`📢 **${currentSuggestion}** Gợi ý Theo Hướng | ${reason}`);
+                playNotificationSound('suggestion');
+                
+                // Cập nhật biến trạng thái và lưu localStorage
+                lastDirectionalSuggestion = currentSuggestion;
+                localStorage.setItem('lastDirectionalSuggestion', lastDirectionalSuggestion);
+                
+                // Cập nhật chỉ số lệnh gần nhất (để thống kê lệnh thành công/thất bại)
+                suggestionStats[type].lastTradeIndex = tradesToday; 
+            } else if (currentSuggestion === lastDirectionalSuggestion) {
+                // Cập nhật hiển thị để người dùng biết gợi ý vẫn đang hoạt động (không cần âm thanh)
+                const display = document.getElementById('suggestionDisplay');
+                const className = currentSuggestion === 'BUY' ? 'suggest-buy' : 'suggest-sell';
+                display.innerHTML = `<div class="${className}">${balanceChart.data.labels[endIndex]} | **${currentSuggestion}** | Lý do: ${reason} (Vẫn giữ hướng)</div>`;
+            }
+        }
+
 
         // Phát hiện giao nhau giữa số dư và giá vàng 
         function detectBalanceGoldIntersections() {
@@ -1421,7 +1703,8 @@
         window.onload = function() {
             loadTradingSettings();
             loadSoundSettings();
-            loadSuggestionSettings();
+            loadIntersectionSettings(); // Tải cài đặt giao nhau CŨ
+            loadDirectionalSettings(); // Tải cài đặt theo hướng MỚI
             
             initChart();
             connectWebSocket();
@@ -1437,9 +1720,14 @@
             // Listener cho Mốc cảnh báo
             document.getElementById('alertPrices').addEventListener('change', updateAlertLevels);
             
-            // Listeners cho Cài đặt Gợi ý
+            // Listeners cho Cài đặt Gợi ý Giao nhau (CŨ)
             ['minSlope', 'minGapPct', 'confirmDelay', 'suggestionMode'].forEach(id => {
-                document.getElementById(id).addEventListener('change', saveSuggestionSettings);
+                document.getElementById(id).addEventListener('change', saveIntersectionSettings);
+            });
+            
+            // Listeners cho Cài đặt Gợi ý Theo Hướng (MỚI)
+             ['suggestionBaseLine', 'suggestionStartIndex', 'directionConfirmationPoints'].forEach(id => {
+                document.getElementById(id).addEventListener('change', saveDirectionalSettings);
             });
             
             // Listener cho File Input để lưu file ngay sau khi chọn (trước khi nhấn Lưu Cấu Hình)
@@ -1447,6 +1735,9 @@
                 // Lưu file ngay sau khi chọn (tránh mất file khi refresh)
                 saveAllSoundSettings(); 
             });
+            
+            // Gọi lại toggleSuggestionMode để thiết lập UI/logic đúng ngay khi tải
+            toggleSuggestionMode();
         };
     </script>
 </body>
