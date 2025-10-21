@@ -368,6 +368,12 @@
                     <span id="currentPointDisplay" style="font-weight: bold; color: #d4af37;">0</span>
                     <button onclick="manualAdvancePoint()" style="margin-left: 10px; background-color: #0ecb81; color: white;">Chuyển điểm tiếp theo</button>
                 </div>
+                
+                <div class="control-group">
+                    <label for="manualPointInput" style="width: 150px;">Đặt điểm hiện tại:</label>
+                    <input type="number" id="manualPointInput" min="0" style="width: 100px;">
+                    <button onclick="setManualPoint()" style="margin-left: 10px; background-color: #d4af37; color: #1e2026;">Áp dụng</button>
+                </div>
                 </div>
         </div>
         <div class="panel">
@@ -957,6 +963,47 @@
             advanceToNextPoint();
             drawBalanceChart(); // Vẽ lại biểu đồ để kích hoạt phân tích mới
         }
+
+        // HÀM ĐẶT ĐIỂM THỦ CÔNG MỚI
+        function setManualPoint() {
+            const manualPoint = parseInt(document.getElementById('manualPointInput').value);
+            const maxIndex = balanceHistory.length - 1;
+            
+            if (isNaN(manualPoint) || manualPoint < 0) {
+                alert('Vui lòng nhập số điểm hợp lệ (≥ 0)');
+                return;
+            }
+            
+            if (manualPoint > maxIndex && maxIndex > 0) {
+                alert(`Điểm tối đa hiện có là: ${maxIndex}`);
+                return;
+            }
+            
+            // Nếu không có dữ liệu, điểm bắt đầu phải là 0
+            if (maxIndex < 0 && manualPoint !== 0) {
+                 alert('Không có dữ liệu lịch sử. Điểm bắt đầu phải là 0.');
+                return;
+            }
+            
+            currentPointIndex = manualPoint;
+            suggestionStartIndex = currentPointIndex;
+            
+            // Lưu vào localStorage
+            localStorage.setItem('currentPointIndex', currentPointIndex);
+            localStorage.setItem('suggestionStartIndex', suggestionStartIndex);
+            
+            // Reset gợi ý
+            lastDirectionalSuggestion = null;
+            localStorage.setItem('lastDirectionalSuggestion', null);
+            
+            // Cập nhật hiển thị
+            updateCurrentPointDisplay();
+            drawBalanceChart();
+            
+            logStatus(`🎯 Đã đặt điểm hiện tại thủ công: #${currentPointIndex}`);
+            alert(`✅ Đã đặt điểm hiện tại thành: #${currentPointIndex}`);
+        }
+        // KẾT THÚC HÀM ĐẶT ĐIỂM THỦ CÔNG MỚI
 
         // Lưu cài đặt Gợi ý Giao nhau (Giữ nguyên)
         function saveIntersectionSettings() {
