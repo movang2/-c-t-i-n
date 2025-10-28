@@ -238,8 +238,11 @@
 
         <div class="panel">
             <div class="panel-title">🎵 Cài Đặt Âm Thanh Thông Báo</div>
-            
-            <div class="control-group" style="align-items: flex-start; flex-direction: column;">
+<div class="control-group">
+    <input type="checkbox" id="enableTTSSound">
+    <label for="enableTTSSound" class="checkbox-label">Dùng TTS tiếng Việt (song song âm thanh)</label>
+</div>
+</div> <div class="control-group" style="align-items: flex-start; flex-direction: column;">
                 <button onclick="toggleDefaultSounds()" id="defaultSoundToggle" style="margin-bottom: 15px; padding: 10px 15px; background: #f6465d; color: white; border: none; border-radius: 4px; cursor: pointer;">
                     🔇 Tắt Âm Thanh Mặc Định
                 </button>
@@ -501,7 +504,8 @@
         // *****************************************************
 
         // Biến điều khiển âm thanh mặc định
-        let defaultSoundsEnabled = localStorage.getItem('defaultSoundsEnabled') !== 'false';
+        let ttsEnabled = localStorage.getItem('enableTTSSound') === 'true';
+let defaultSoundsEnabled = localStorage.getItem('defaultSoundsEnabled') !== 'false';
 
         // Âm thanh mặc định
         const defaultOpenSound = new Audio('https://www.soundjay.com/buttons/button-21.mp3');
@@ -676,20 +680,77 @@
         }
 
         // Hàm phát âm thanh (Giữ nguyên)
-        function playNotificationSound(soundType) {
-            try {
-                const soundToPlay = getSound(soundType);
-                
-                if (soundToPlay) {
-                    soundToPlay.currentTime = 0;
-                    // Lỗi ở đây (lỗi Promise) thường xảy ra khi trình duyệt chặn autoplay.
-                    soundToPlay.play().catch(e => console.log(`Lỗi phát âm thanh (${soundType}):`, e));
-                }
-                
-            } catch (e) {
-                console.error("Lỗi hệ thống âm thanh:", e);
-            }
+        
+
+function playTTSMessage(soundType, info = null) {
+    const synth = window.speechSynthesis;
+    if (!synth) {
+        console.warn("Trình duyệt không hỗ trợ TTS");
+        return;
+    }
+
+    let message = "";
+    switch (soundType) {
+        case 'open': message = "Đã mở lệnh mới"; break;
+        case 'tp':
+            if (info) {
+                const dir = info.type === 'BUY' ? 'mua' : 'bán';
+                const profit = info.profit.toFixed(2);
+                message = `Chốt lời lệnh ${dir}. Lợi nhuận ${profit} đô la`;
+            } else message = "Chốt lời thành công";
+            break;
+        case 'sl':
+            if (info) {
+                const dir = info.type === 'BUY' ? 'mua' : 'bán';
+                const loss = Math.abs(info.profit).toFixed(2);
+                message = `Dừng lỗ lệnh ${dir}. Lỗ ${loss} đô la`;
+            } else message = "Dừng lỗ kích hoạt";
+            break;
+        case 'alert':
+            if (info && info.level) {
+                const dirText = info.direction === 'up' ? 'vượt lên' : 'tụt xuống';
+                message = `Giá vàng vừa ${dirText} mốc ${info.level}`;
+            } else message = "Có cảnh báo giá mới";
+            break;
+        case 'intersection':
+            if (info && info.suggestion) {
+                message = info.suggestion === 'BUY'
+                    ? "Tín hiệu mua: đường số dư vượt lên"
+                    : "Tín hiệu bán: đường giá vàng vượt lên";
+            } else message = "Phát hiện giao nhau giữa hai đường";
+            break;
+        case 'suggestion':
+            if (info && info.suggestion) {
+                message = `Gợi ý ${info.suggestion === 'BUY' ? 'mua' : 'bán'} từ hệ thống`;
+            } else message = "Có gợi ý giao dịch mới";
+            break;
+        case 'priceStagnant': message = "Cảnh báo: giá vàng đang đứng im"; break;
+        default: message = "Có thông báo mới";
+    }
+
+    synth.cancel();
+    const utter = new SpeechSynthesisUtterance(message);
+    utter.lang = "vi-VN";
+    utter.rate = 1.0;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    synth.speak(utter);
+}
+// SỬA LỖI 1: Sửa lỗi cú pháp hàm playNotificationSound
+function playNotificationSound(soundType, data = null) {
+    try {
+        if (ttsEnabled) {
+            playTTSMessage(soundType, data);
         }
+        const soundToPlay = getSound(soundType);
+        if (soundToPlay) {
+            soundToPlay.currentTime = 0;
+            soundToPlay.play().catch(e => console.log(`Lỗi phát âm thanh (${soundType}):`, e));
+        }
+    } catch (e) {
+        console.error("Lỗi hệ thống âm thanh:", e);
+    }
+}
         
         // Hàm lấy âm thanh theo ưu tiên (Giữ nguyên)
         function getSound(soundType) {
@@ -1305,30 +1366,92 @@
         }
         // *********************************************************
 
-        // Hàm kiểm tra cảnh báo giá (Giữ nguyên)
+        // SỬA LỖI 2: Thêm nội dung cho hàm checkPriceAlerts
         function checkPriceAlerts(oldPrice, newPrice) {
-            // ... (Giữ nguyên logic) ...
+            if (!alertLevels.length) return;
+            
+            alertLevels.forEach(level => {
+                const crossUp = oldPrice < level && newPrice >= level;
+                const crossDown = oldPrice > level && newPrice <= level;
+                
+                if ((crossUp || crossDown) && !alertedLevels.has(level)) {
+                    alertedLevels.add(level);
+                    const direction = crossUp ? 'lên' : 'xuống';
+                    const message = `⚠️ Giá vừa vượt mốc ${level} (${direction})`;
+                    addHistory(message);
+                    playNotificationSound('alert', {
+                        level: level,
+                        direction: crossUp ? 'up' : 'down',
+                        price: newPrice
+                    });
+                }
+            });
         }
 
-        // Hàm cập nhật mốc cảnh báo (Giữ nguyên)
+        // SỬA LỖI 2: Thêm nội dung cho hàm updateAlertLevels
         function updateAlertLevels() {
-            // ... (Giữ nguyên logic) ...
+            const alertInput = document.getElementById('alertPrices').value;
+            alertLevels = alertInput.split(',')
+                .map(level => parseFloat(level.trim()))
+                .filter(level => !isNaN(level) && level > 0);
+            alertedLevels.clear();
+            localStorage.setItem('alertLevels', JSON.stringify(alertLevels));
+            addHistory(`📊 Đã cập nhật ${alertLevels.length} mốc cảnh báo giá`);
         }
         
-        // Hàm cập nhật thống kê gợi ý (Giữ nguyên)
+        // SỬA LỖI 3: Thêm nội dung cho hàm updateSuggestionStats
         function updateSuggestionStats(trade, profit) {
-            // ... (Giữ nguyên logic) ...
-            // Cần được sửa để nhận tradeIndex thay vì suggestionType
+            // Logic cập nhật thống kê (có thể mở rộng sau)
+            // Ví dụ:
+            // if (trade.suggestionSource) {
+            //     const type = trade.type; // BUY hoặc SELL
+            //     if (profit > 0) {
+            //         suggestionStats[type].correct++;
+            //     }
+            //     localStorage.setItem('suggestionStats', JSON.stringify(suggestionStats));
+            //     updateSuggestionStatsDisplay();
+            // }
         }
         
-        // Hàm cập nhật hiển thị thống kê gợi ý (Giữ nguyên)
+        // SỬA LỖI 3: Thêm nội dung cho hàm updateSuggestionStatsDisplay
         function updateSuggestionStatsDisplay() {
-            // ... (Giữ nguyên logic) ...
+            const buyTotal = suggestionStats.BUY.total;
+            const buyCorrect = suggestionStats.BUY.correct;
+            const sellTotal = suggestionStats.SELL.total;
+            const sellCorrect = suggestionStats.SELL.correct;
+            
+            document.getElementById('statBuyTotal').textContent = buyTotal;
+            document.getElementById('statBuyCorrect').textContent = buyCorrect;
+            document.getElementById('statBuyPct').textContent = buyTotal > 0 ? ((buyCorrect / buyTotal) * 100).toFixed(2) + '%' : '0.00%';
+            
+            document.getElementById('statSellTotal').textContent = sellTotal;
+            document.getElementById('statSellCorrect').textContent = sellCorrect;
+            document.getElementById('statSellPct').textContent = sellTotal > 0 ? ((sellCorrect / sellTotal) * 100).toFixed(2) + '%' : '0.00%';
         }
         
-        // Hàm phân tích lịch sử số dư (Giữ nguyên)
+        // SỬA LỖI 4: Thêm nội dung cho hàm analyzeBalanceHistory
         function analyzeBalanceHistory() {
-            // ... (Giữ nguyên logic) ...
+            if (balanceHistory.length === 0) {
+                alert('Chưa có dữ liệu lịch sử để phân tích');
+                return;
+            }
+            
+            const totalTrades = balanceHistory.filter(item => item.tradeIndex).length;
+            const profitableTrades = balanceHistory.filter(item => item.profit > 0).length;
+            const totalProfit = balanceHistory.reduce((sum, item) => sum + (item.profit || 0), 0);
+            const winRate = totalTrades > 0 ? (profitableTrades / totalTrades * 100).toFixed(2) : 0;
+            
+            const analysis = `
+Phân tích hiệu suất:
+- Tổng lệnh: ${totalTrades}
+- Lệnh có lời: ${profitableTrades}
+- Tỷ lệ thắng: ${winRate}%
+- Tổng lợi nhuận: ${totalProfit.toFixed(2)} USD
+- Số dư hiện tại: ${virtualBalance.toFixed(2)} USD
+    `;
+            
+            alert(analysis);
+            addHistory('📈 Đã phân tích hiệu suất giao dịch');
         }
 
         // Hàm xóa lịch sử (Giữ nguyên)
@@ -1811,7 +1934,16 @@
             loadIntersectionSettings();
             loadDirectionalSettings(); // Tải cài đặt hướng và điểm mới
             loadSoundSettings();
-            updateAlertLevels(); // Cập nhật mốc cảnh báo
+
+            // SỬA LỖI 5: Thêm tải alert levels từ localStorage
+            const savedAlertLevels = JSON.parse(localStorage.getItem('alertLevels'));
+            if (savedAlertLevels) {
+                alertLevels = savedAlertLevels;
+                document.getElementById('alertPrices').value = alertLevels.join(',');
+            } else {
+                updateAlertLevels(); // Cập nhật mốc cảnh báo (để lưu mảng rỗng nếu chưa có)
+            }
+            
             updateStatus();
             initChart();
             toggleSuggestionMode(); // Phải gọi sau khi loadDirectionalSettings
@@ -1820,6 +1952,9 @@
         window.onload = function() {
             loadSettingsAndInitialize();
             connectWebSocket();
+            
+            // SỬA LỖI 6: Thêm log khởi động
+            addHistory('🔄 Ứng dụng khởi động');
             
             // Kiểm tra giá đứng im mỗi 5 giây
             setInterval(checkPriceStagnation, 5000); 
