@@ -681,67 +681,108 @@ let defaultSoundsEnabled = localStorage.getItem('defaultSoundsEnabled') !== 'fal
 
         // Hàm phát âm thanh (Giữ nguyên)
         
-
+// *** START FIX 3: REPLACE playTTSMessage ***
 function playTTSMessage(soundType, info = null) {
-    const synth = window.speechSynthesis;
-    if (!synth) {
-        console.warn("Trình duyệt không hỗ trợ TTS");
+    // Kiểm tra trình duyệt có hỗ trợ TTS không
+    if (!('speechSynthesis' in window)) {
+        console.warn("Trình duyệt không hỗ trợ Text-to-Speech");
         return;
     }
-
+    
+    const synth = window.speechSynthesis;
+    
+    // Dừng các speech đang chạy
+    synth.cancel();
+    
     let message = "";
     switch (soundType) {
-        case 'open': message = "Đã mở lệnh mới"; break;
+        case 'open': 
+            message = "Đã mở lệnh mới"; 
+            break;
         case 'tp':
             if (info) {
                 const dir = info.type === 'BUY' ? 'mua' : 'bán';
                 const profit = info.profit.toFixed(2);
                 message = `Chốt lời lệnh ${dir}. Lợi nhuận ${profit} đô la`;
-            } else message = "Chốt lời thành công";
+            } else {
+                message = "Chốt lời thành công";
+            }
             break;
         case 'sl':
             if (info) {
                 const dir = info.type === 'BUY' ? 'mua' : 'bán';
                 const loss = Math.abs(info.profit).toFixed(2);
                 message = `Dừng lỗ lệnh ${dir}. Lỗ ${loss} đô la`;
-            } else message = "Dừng lỗ kích hoạt";
+            } else {
+                message = "Dừng lỗ kích hoạt";
+            }
             break;
         case 'alert':
             if (info && info.level) {
                 const dirText = info.direction === 'up' ? 'vượt lên' : 'tụt xuống';
                 message = `Giá vàng vừa ${dirText} mốc ${info.level}`;
-            } else message = "Có cảnh báo giá mới";
+            } else {
+                message = "Có cảnh báo giá mới";
+            }
             break;
         case 'intersection':
             if (info && info.suggestion) {
                 message = info.suggestion === 'BUY'
                     ? "Tín hiệu mua: đường số dư vượt lên"
                     : "Tín hiệu bán: đường giá vàng vượt lên";
-            } else message = "Phát hiện giao nhau giữa hai đường";
+            } else {
+                message = "Phát hiện giao nhau giữa hai đường";
+            }
             break;
         case 'suggestion':
             if (info && info.suggestion) {
                 message = `Gợi ý ${info.suggestion === 'BUY' ? 'mua' : 'bán'} từ hệ thống`;
-            } else message = "Có gợi ý giao dịch mới";
+            } else {
+                message = "Có gợi ý giao dịch mới";
+            }
             break;
-        case 'priceStagnant': message = "Cảnh báo: giá vàng đang đứng im"; break;
-        default: message = "Có thông báo mới";
+        case 'priceStagnant': 
+            message = "Cảnh báo: giá vàng đang đứng im"; 
+            break;
+        default: 
+            message = "Có thông báo mới";
     }
 
-    synth.cancel();
-    const utter = new SpeechSynthesisUtterance(message);
-    utter.lang = "vi-VN";
-    utter.rate = 1.0;
-    utter.pitch = 1.0;
-    utter.volume = 1.0;
-    synth.speak(utter);
+    try {
+        const utter = new SpeechSynthesisUtterance(message);
+        utter.lang = "vi-VN";
+        utter.rate = 1.0;
+        utter.pitch = 1.0;
+        utter.volume = 1.0;
+        
+        // Thêm xử lý lỗi
+        utter.onerror = function(event) {
+            console.error('Lỗi TTS:', event.error);
+        };
+        
+        utter.onend = function() {
+            console.log('TTS finished');
+        };
+        
+        synth.speak(utter);
+    } catch (error) {
+        console.error('Lỗi khi phát TTS:', error);
+    }
 }
-// SỬA LỖI 1: Sửa lỗi cú pháp hàm playNotificationSound
+// *** END FIX 3 ***
+
+// *** START FIX 4: REPLACE playNotificationSound ***
 function playNotificationSound(soundType, data = null) {
     try {
+        // KIỂM TRA TTS TRƯỚC KHI PHÁT
         if (ttsEnabled) {
+            console.log(`Phát TTS: ${soundType}`, data);
             playTTSMessage(soundType, data);
+        } else {
+            console.log(`TTS đã tắt, bỏ qua: ${soundType}`);
         }
+        
+        // Phát âm thanh thông thường
         const soundToPlay = getSound(soundType);
         if (soundToPlay) {
             soundToPlay.currentTime = 0;
@@ -751,6 +792,7 @@ function playNotificationSound(soundType, data = null) {
         console.error("Lỗi hệ thống âm thanh:", e);
     }
 }
+// *** END FIX 4 ***
         
         // Hàm lấy âm thanh theo ưu tiên (Giữ nguyên)
         function getSound(soundType) {
@@ -818,6 +860,11 @@ function playNotificationSound(soundType, data = null) {
             });
 
             localStorage.setItem('soundUseStatus', JSON.stringify(soundUseStatus));
+
+            // *** START FIX 1: ADD TTS SAVE ***
+            ttsEnabled = document.getElementById('enableTTSSound').checked;
+            localStorage.setItem('enableTTSSound', ttsEnabled);
+            // *** END FIX 1 ***
             
             alert('✅ Đã lưu cấu hình âm thanh');
             logStatus('🎵 Đã lưu cấu hình âm thanh');
@@ -830,6 +877,11 @@ function playNotificationSound(soundType, data = null) {
             if (globalUrl) {
                 userGlobalNotifySound = new Audio(globalUrl);
             }
+
+            // *** START FIX 2: ADD TTS LOAD ***
+            ttsEnabled = localStorage.getItem('enableTTSSound') === 'true';
+            document.getElementById('enableTTSSound').checked = ttsEnabled;
+            // *** END FIX 2 ***
 
             // Tải trạng thái tích chọn
             soundUseStatus = JSON.parse(localStorage.getItem('soundUseStatus') || '{}');
@@ -1153,6 +1205,7 @@ function playNotificationSound(soundType, data = null) {
             localStorage.removeItem('globalSoundUrl');
             localStorage.removeItem('soundUseStatus');
             localStorage.removeItem('defaultSoundsEnabled');
+            localStorage.removeItem('enableTTSSound'); // THÊM: Reset TTS
             
             // Xóa cài đặt mới
             localStorage.removeItem('suggestionByDirectionEnabled');
@@ -1179,6 +1232,7 @@ function playNotificationSound(soundType, data = null) {
             userGlobalNotifySound = null;
             soundUseStatus = {};
             defaultSoundsEnabled = true;
+            ttsEnabled = false; // THÊM: Reset TTS
 
             // Khởi tạo lại biến gợi ý
             suggestionByDirectionEnabled = false;
@@ -1271,9 +1325,9 @@ function playNotificationSound(soundType, data = null) {
             drawBalanceChart();
 
             if (reason === 'TAKE PROFIT') {
-                playNotificationSound('tp');
+                playNotificationSound('tp', { type: trade.type, profit: profit }); // THÊM data cho TTS
             } else if (reason === 'STOP LOSS') {
-                playNotificationSound('sl');
+                playNotificationSound('sl', { type: trade.type, profit: profit }); // THÊM data cho TTS
             }
             
             addHistory(
@@ -1717,7 +1771,7 @@ Phân tích hiệu suất:
                 display.innerHTML = `<div class="${className}">${confirmLabel} | **${currentSuggestion}** | Lý do: ${reason} (Chế độ Giao nhau)</div>`;
                 
                 logStatus(`📢 **${currentSuggestion}** Gợi ý Giao nhau | ${reason}`);
-                playNotificationSound('intersection');
+                playNotificationSound('intersection', { suggestion: currentSuggestion }); // THÊM data cho TTS
                 
                 // Lưu lại chỉ số giao nhau đã cảnh báo
                 alertedIntersectionIndices.add(lastIntersectionIndex);
@@ -1790,7 +1844,7 @@ Phân tích hiệu suất:
                 display.innerHTML = `<div class="${className}">${timeLabel} | **${currentSuggestion}** | Lý do: ${reason} (Chế độ Theo Hướng)</div>`;
                 
                 logStatus(`📢 **${currentSuggestion}** Gợi ý Theo Hướng | ${reason}`);
-                playNotificationSound('suggestion');
+                playNotificationSound('suggestion', { suggestion: currentSuggestion }); // THÊM data cho TTS
                 
                 lastDirectionalSuggestion = currentSuggestion;
                 localStorage.setItem('lastDirectionalSuggestion', lastDirectionalSuggestion);
@@ -1994,7 +2048,19 @@ Phân tích hiệu suất:
             
             // Listener cho input Danh sách tùy chỉnh
             document.getElementById('customPoints').addEventListener('change', saveDirectionalSettings);
-            
+
+            // *** START FIX 5: ADD CONSOLE CHECKS ***
+            console.log('TTS Enabled:', ttsEnabled);
+            console.log('Browser TTS Support:', 'speechSynthesis' in window);
+
+            // Test TTS
+            setTimeout(() => {
+                if (ttsEnabled) {
+                    console.log('Testing TTS...');
+                    playTTSMessage('test');
+                }
+            }, 3000);
+            // *** END FIX 5 ***
         };
     </script>
 </body>
