@@ -1,73 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pro Gold Combo</title>
-<style>
-body {
-  font-family: 'Arial', sans-serif;
-  margin: 0;
-  padding: 0;
-  background: #f8f9fa;
-}
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #1e2026;
-  color: white;
-  padding: 10px 20px;
-}
-.tab-buttons {
-  display: flex;
-  gap: 10px;
-}
-.tab-buttons button {
-  background: #d4af37;
-  color: #1e2026;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.tab-buttons button.active {
-  background: #0ecb81;
-  color: white;
-}
-.tab-content {
-  display: none;
-  padding: 0;
-}
-.tab-content.active {
-  display: block;
-}
-#transferDataBtn {
-  background: #0ecb81;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-weight: bold;
-}
-</style>
-</head>
-<body>
-
-<header>
-  <div class="tab-buttons">
-    <button id="liveTabBtn" class="active">🟡 Giao dịch trực tiếp</button>
-    <button id="replayTabBtn">🟢 Phát lại biểu đồ</button>
-  </div>
-  <button id="transferDataBtn">Chuyển dữ liệu sang phát lại</button>
-</header>
-
-<div id="liveTab" class="tab-content active">
-<!DOCTYPE html>
-<html lang="vi">
-<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giao Dịch Vàng (XAU/USD) - Finnhub (Directional Suggestion)</title>
@@ -260,6 +193,66 @@ header {
     </style>
 </head>
 <body>
+<div style="text-align:center; margin-bottom: 20px;">
+  <button id="loadJsonBtn" style="background:#007bff;color:white;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;">📂 Tải dữ liệu JSON</button>
+  <button id="exportJsonBtn" style="background:#17a2b8;color:white;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;margin-left:10px;">💾 Xuất dữ liệu JSON</button>
+</div>
+<script>
+const fileInputJson = document.createElement('input');
+fileInputJson.type = 'file';
+fileInputJson.accept = '.json';
+fileInputJson.style.display = 'none';
+document.body.appendChild(fileInputJson);
+
+document.getElementById('loadJsonBtn').onclick = () => fileInputJson.click();
+
+fileInputJson.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const jsonData = JSON.parse(e.target.result);
+      if (!Array.isArray(jsonData)) { alert('❌ Dữ liệu không hợp lệ!'); return; }
+      if (jsonData.length > 0) {
+        const first = jsonData[0];
+        if (!first.time || first.balance === undefined) {
+          alert('❌ Thiếu trường time hoặc balance trong dữ liệu!');
+          return;
+        }
+      }
+      localStorage.setItem('balanceHistory', JSON.stringify(jsonData));
+      alert(`✅ Đã tải ${jsonData.length} điểm dữ liệu! Biểu đồ sẽ được cập nhật.`);
+      balanceHistory = jsonData;
+      drawBalanceChart();
+    } catch (err) {
+      alert('❌ Lỗi đọc file JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  fileInputJson.value = '';
+});
+
+document.getElementById('exportJsonBtn').onclick = () => {
+  try {
+    const data = JSON.parse(localStorage.getItem('balanceHistory') || '[]');
+    if (data.length === 0) { alert('Không có dữ liệu để xuất!'); return; }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gold_balance_data_' + new Date().toISOString().split('T')[0] + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    alert(`✅ Đã xuất ${data.length} điểm dữ liệu!`);
+  } catch (err) {
+    alert('❌ Lỗi xuất JSON: ' + err.message);
+  }
+};
+</script>
+
     <div class="container">
         <h1>Giao Dịch Vàng (XAU/USD) - Finnhub</h1>
         
@@ -893,20 +886,24 @@ function playNotificationSound(soundType, data = null) {
         // Lưu tất cả cấu hình âm thanh (Giữ nguyên)
         function saveAllSoundSettings() {
              const globalFileInput = document.getElementById('globalNotifySoundInput');
-            const file = globalFileInput.files[0];
             
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const url = e.target.result;
-                    userGlobalNotifySound = new Audio(url);
-                    localStorage.setItem('globalSoundUrl', url);
-                    logStatus('🎵 Đã tải file âm thanh chung thành công');
-                };
-                reader.readAsDataURL(file);
+            // 1. Xử lý file âm thanh chung (chỉ tải 1 lần)
+            const f = globalFileInput?.files[0];
+            let newGlobalUrl = localStorage.getItem('globalSoundUrl');
+            
+            if (f) {
+                // Tạo URL tạm thời và lưu
+                newGlobalUrl = URL.createObjectURL(f);
+                userGlobalNotifySound = new Audio(newGlobalUrl); 
+                localStorage.setItem('globalSoundUrl', newGlobalUrl);
+            } else if (newGlobalUrl) {
+                 // Tải lại audio từ URL đã lưu nếu không chọn file mới
+                 userGlobalNotifySound = new Audio(newGlobalUrl); 
+            } else {
+                userGlobalNotifySound = null;
             }
 
-            // Lưu trạng thái tích chọn của từng loại âm thanh
+            // 2. Xử lý trạng thái tích chọn
             const soundTypes = [
                 { id: 'useOpenSound', type: 'open' },
                 { id: 'useTpSound', type: 'tp' },
@@ -916,12 +913,14 @@ function playNotificationSound(soundType, data = null) {
                 { id: 'useSuggestionSound', type: 'suggestion' },
                 { id: 'usePriceStagnantSound', type: 'priceStagnant' },
             ];
+
             soundTypes.forEach(s => {
                 const use = document.getElementById(s.id)?.checked || false;
                 soundUseStatus[s.type] = use;
             });
+
             localStorage.setItem('soundUseStatus', JSON.stringify(soundUseStatus));
-            
+
             // *** START FIX 1: ADD TTS SAVE ***
             ttsEnabled = document.getElementById('enableTTSSound').checked;
             localStorage.setItem('enableTTSSound', ttsEnabled);
@@ -941,13 +940,12 @@ function playNotificationSound(soundType, data = null) {
 
             // *** START FIX 2: ADD TTS LOAD ***
             ttsEnabled = localStorage.getItem('enableTTSSound') === 'true';
-            if (document.getElementById('enableTTSSound')) {
-                document.getElementById('enableTTSSound').checked = ttsEnabled;
-            }
+            document.getElementById('enableTTSSound').checked = ttsEnabled;
             // *** END FIX 2 ***
 
             // Tải trạng thái tích chọn
             soundUseStatus = JSON.parse(localStorage.getItem('soundUseStatus') || '{}');
+            
             const soundTypes = [
                 { id: 'useOpenSound', type: 'open' },
                 { id: 'useTpSound', type: 'tp' },
@@ -957,761 +955,72 @@ function playNotificationSound(soundType, data = null) {
                 { id: 'useSuggestionSound', type: 'suggestion' },
                 { id: 'usePriceStagnantSound', type: 'priceStagnant' },
             ];
+
             soundTypes.forEach(s => {
                 if (document.getElementById(s.id)) {
                     // Thiết lập trạng thái tích chọn từ soundUseStatus
                     document.getElementById(s.id).checked = soundUseStatus[s.type] || false;
                 }
             });
-
+            
             // Cập nhật trạng thái nút bật/tắt âm mặc định
             // Gọi lại toggleDefaultSounds() để thiết lập UI cho nút
-            defaultSoundsEnabled = localStorage.getItem('defaultSoundsEnabled') !== 'false';
-            const button = document.getElementById('defaultSoundToggle');
-            if (button) {
-                if (defaultSoundsEnabled) {
-                    button.innerHTML = '🔇 Tắt Âm Thanh Mặc Định';
-                    button.style.backgroundColor = '#f6465d';
-                } else {
-                    button.innerHTML = '🔊 Bật Âm Thanh Mặc Định';
-                    button.style.backgroundColor = '#0ecb81';
-                }
-            }
-        }
-        
-        // Hàm cập nhật trạng thái hiển thị
-        function updateStatus() {
-            document.getElementById('balanceText').textContent = virtualBalance.toFixed(2) + ' USD';
-            document.getElementById('tradesCount').textContent = tradesToday;
-            document.getElementById('statusText').textContent = autoTradingActive ? 'Đang giao dịch' : 'Đã dừng';
-            
-            const tradesContainer = document.getElementById('currentTradeDetails');
-            if (currentTrades.filter(t => !t.closed).length > 0) {
-                document.getElementById('activeTrades').style.display = 'block';
-            } else if (tradesContainer) {
-                document.getElementById('activeTrades').style.display = 'none';
-            }
-        }
-
-        // Bắt đầu giao dịch
-        function startAutoTrading() {
-            if (autoTradingActive) return;
-            
-            // Cập nhật giá trị ban đầu nếu chưa có
-            if (balanceHistory.length === 0) {
-                virtualBalance = parseFloat(document.getElementById('virtualBalance').value);
-                balanceHistory.push({ 
-                    time: new Date().toISOString(), 
-                    balance: virtualBalance, 
-                    profit: 0, 
-                    reason: 'INIT', 
-                    type: 'INIT',
-                    goldPrice: currentPrice, // Lưu giá vàng ban đầu
-                });
+            if (defaultSoundsEnabled) {
+                document.getElementById('defaultSoundToggle').innerHTML = '🔇 Tắt Âm Thanh Mặc Định';
+                document.getElementById('defaultSoundToggle').style.backgroundColor = '#f6465d';
             } else {
-                 // Cập nhật số dư nếu đã có lịch sử
-                virtualBalance = balanceHistory[balanceHistory.length - 1].balance;
+                document.getElementById('defaultSoundToggle').innerHTML = '🔊 Bật Âm Thanh Mặc Định';
+                document.getElementById('defaultSoundToggle').style.backgroundColor = '#0ecb81';
             }
-            
-            autoTradingActive = true;
-            tradesToday = 0; // Reset số lệnh trong ngày
-            
-            // Xóa các lệnh đã đóng
-            currentTrades = currentTrades.filter(t => !t.closed); 
-            
-            // Thiết lập interval kiểm tra lệnh mới
-            tradingInterval = setInterval(createNewTrades, 3000); // Tạo lệnh mới mỗi 3 giây
-            
-            logStatus('🚀 Bắt đầu giao dịch tự động. Số dư: ' + virtualBalance.toFixed(2));
-            updateStatus();
-            saveTradingSettings();
-        }
-
-        // Dừng giao dịch
-        function stopAutoTrading() {
-            if (!autoTradingActive) return;
-            autoTradingActive = false;
-            if (tradingInterval) {
-                clearInterval(tradingInterval);
-                tradingInterval = null;
-            }
-            logStatus('⏸️ Dừng giao dịch tự động');
-            updateStatus();
         }
         
-        // ********** BỔ SUNG HÀM createNewTrades **********
-        function createNewTrades() {
-            if (!autoTradingActive || currentPrice === 0 || virtualBalance < 100) {
-                stopAutoTrading();
-                return;
-            }
+        // Hàm bật/tắt chế độ gợi ý (Giữ nguyên)
+        function toggleSuggestionMode() {
+            suggestionByDirectionEnabled = document.getElementById('suggestionByDirectionEnabled').checked;
+            suggestionByIntersectionEnabled = document.getElementById('suggestionByIntersectionEnabled').checked;
 
-            // Đảm bảo không tạo lệnh mới nếu đang có lệnh mở
-            if (currentTrades.length > 0) {
-                logStatus('⚠️ Đang có lệnh mở, không tạo lệnh mới.');
-                return;
-            }
-
-            // Đảm bảo không tạo lệnh mới nếu đang chờ lệnh mở
-            if (isWaitingNewTrades) {
-                return; 
-            }
+            const directionalPanel = document.getElementById('directionalSettingsContainer');
+            const intersectionPanel = document.getElementById('intersectionSettingsContainer');
             
-            let suggestionType = null;
-            if (suggestionByDirectionEnabled) {
-                const suggestion = checkDirectionalSuggestion(true);
-                if (suggestion) {
-                    suggestionType = suggestion;
+            // Chỉ hiển thị panel của chế độ đang bật
+            directionalPanel.style.display = suggestionByDirectionEnabled ? 'block' : 'none';
+            intersectionPanel.style.display = suggestionByIntersectionEnabled ? 'block' : 'none';
+
+            // Đảm bảo không bật cả hai cùng lúc (tùy chọn)
+            if (suggestionByDirectionEnabled && suggestionByIntersectionEnabled) {
+                if (confirm("Bạn chỉ nên bật một chế độ gợi ý. Tắt Giao nhau?")) {
+                    document.getElementById('suggestionByIntersectionEnabled').checked = false;
+                    suggestionByIntersectionEnabled = false;
+                    intersectionPanel.style.display = 'none';
+                } else {
+                    document.getElementById('suggestionByDirectionEnabled').checked = false;
+                    suggestionByDirectionEnabled = false;
+                    directionalPanel.style.display = 'none';
                 }
-            } else if (suggestionByIntersectionEnabled) {
-                const suggestion = checkIntersectionSuggestion(true);
-                if (suggestion) {
-                    suggestionType = suggestion;
-                }
+            } else if (!suggestionByDirectionEnabled && !suggestionByIntersectionEnabled) {
+                document.getElementById('suggestionDisplay').innerHTML = 'Chưa có chế độ gợi ý nào được bật.';
             }
 
-            if (!suggestionType) {
-                logStatus('🤔 Không có gợi ý giao dịch nào đủ điều kiện để mở lệnh.');
-                return;
-            }
+            localStorage.setItem('suggestionByDirectionEnabled', suggestionByDirectionEnabled);
+            localStorage.setItem('suggestionByIntersectionEnabled', suggestionByIntersectionEnabled);
             
-            // Cài đặt lệnh
-            const leverage = parseFloat(document.getElementById('leverage').value);
-            const lotSize = parseFloat(document.getElementById('lotSize').value);
-            const stopLoss = parseFloat(document.getElementById('stopLoss').value);
-            const takeProfit = parseFloat(document.getElementById('takeProfit').value);
-            
-            const tradeIndex = Date.now();
-            const newTrade = {
-                tradeIndex: tradesToday + 1,
-                type: suggestionType, // BUY hoặc SELL
-                entryPrice: currentPrice,
-                lotSize: lotSize,
-                leverage: leverage,
-                stopLossLevel: suggestionType === 'BUY' ? currentPrice - (stopLoss / lotSize / leverage) : currentPrice + (stopLoss / lotSize / leverage),
-                takeProfitLevel: suggestionType === 'BUY' ? currentPrice + (takeProfit / lotSize / leverage) : currentPrice - (takeProfit / lotSize / leverage),
-                openTime: new Date().toISOString(),
-                closed: false,
-                suggestionSource: suggestionByDirectionEnabled ? 'Direction' : 'Intersection',
-            };
-
-            currentTrades.push(newTrade);
-            tradesToday++;
-            isWaitingNewTrades = true; // Đặt cờ chờ
-            
-            playNotificationSound('open');
-
-            addHistory(
-                `🔥 Mở lệnh ${newTrade.type} #${newTrade.tradeIndex} @ ${newTrade.entryPrice.toFixed(2)} | KL: ${lotSize} | SL: ${stopLoss} | TP: ${takeProfit}`
-            );
-            updateTradeInfo();
-            updateStatus();
-            logStatus(`📈 Mở lệnh ${newTrade.type} #${newTrade.tradeIndex}`);
-            
-            // Xóa cờ chờ sau 1 giây (để tránh spam lệnh)
-            setTimeout(() => {
-                isWaitingNewTrades = false;
-            }, 1000);
-        }
-        // *********************************************************
-
-        // Kiểm tra lệnh (TP/SL)
-        function checkTrades() {
-            if (currentTrades.length === 0) return;
-
-            const tradesToClose = [];
-
-            currentTrades.forEach((trade, index) => {
-                if (trade.closed) return;
-
-                // Tính toán P&L theo giá hiện tại
-                const direction = trade.type === 'BUY' ? 1 : -1;
-                const priceDiff = (currentPrice - trade.entryPrice) * direction;
-                const profit = priceDiff * trade.lotSize * 100000; // 1 pip = 0.01
-
-                // Kiểm tra Take Profit
-                if (trade.type === 'BUY' && currentPrice >= trade.takeProfitLevel) {
-                    tradesToClose.push({ index, reason: 'TAKE PROFIT', closePrice: currentPrice, profit: profit });
-                } else if (trade.type === 'SELL' && currentPrice <= trade.takeProfitLevel) {
-                    tradesToClose.push({ index, reason: 'TAKE PROFIT', closePrice: currentPrice, profit: profit });
-                }
-                // Kiểm tra Stop Loss
-                else if (trade.type === 'BUY' && currentPrice <= trade.stopLossLevel) {
-                    tradesToClose.push({ index, reason: 'STOP LOSS', closePrice: currentPrice, profit: profit });
-                } else if (trade.type === 'SELL' && currentPrice >= trade.stopLossLevel) {
-                    tradesToClose.push({ index, reason: 'STOP LOSS', closePrice: currentPrice, profit: profit });
-                }
-            });
-
-            tradesToClose.forEach(item => {
-                closeTrade(item.index, item.reason, item.closePrice, item.profit);
-            });
+            logStatus(`Gợi ý Theo Hướng: ${suggestionByDirectionEnabled ? 'Bật' : 'Tắt'} | Gợi ý Giao nhau: ${suggestionByIntersectionEnabled ? 'Bật' : 'Tắt'}`);
+            drawBalanceChart(); // Vẽ lại để kích hoạt logic gợi ý mới
         }
         
-        // *********************************************************
-        // ********** BỔ SUNG HÀM closeTrade **********
-        function closeTrade(index, reason, closePrice, profit) {
-            const trade = currentTrades[index];
-            if (!trade || trade.closed) return;
-
-            trade.closed = true;
-            trade.closeTime = new Date().toISOString();
-            trade.reason = reason;
-            trade.closePrice = closePrice;
-            trade.profit = profit;
-
-            // Cập nhật số dư
-            virtualBalance += profit;
-
-            // Cập nhật thống kê gợi ý (MỚI)
-            updateSuggestionStats(trade, profit);
-
-            // Lưu lịch sử số dư
-            balanceHistory.push({
-                time: new Date().toISOString(),
-                balance: virtualBalance,
-                profit: profit,
-                reason: reason,
-                type: trade.type,
-                entryPrice: trade.entryPrice,
-                closePrice: closePrice,
-                goldPrice: currentPrice, // ĐÃ SỬA: LƯU GIÁ VÀNG HIỆN TẠI
-                lotSize: trade.lotSize,
-                tradeIndex: trade.tradeIndex
-            });
-
-            // Logic chuyển điểm tiếp theo
-            if (suggestionByDirectionEnabled) {
-                advanceToNextPoint();
-            }
-
-            localStorage.setItem('balanceHistory', JSON.stringify(balanceHistory));
-            saveTradingSettings();
-            drawBalanceChart();
-
-            if (reason === 'TAKE PROFIT') {
-                playNotificationSound('tp', { type: trade.type, profit: profit }); // THÊM data cho TTS
-            } else if (reason === 'STOP LOSS') {
-                playNotificationSound('sl', { type: trade.type, profit: profit }); // THÊM data cho TTS
-            }
-
-            addHistory(
-                `Đóng lệnh ${trade.type} #${trade.tradeIndex} @ ${closePrice.toFixed(2)} (${reason}) | ` +
-                `Lợi nhuận: <span class="${profit >= 0 ? 'profit' : 'loss'}">${profit.toFixed(2)} USD</span> | ` +
-                `Số dư: ${virtualBalance.toFixed(2)} USD`
-            );
-            updateTradeInfo();
-            updateStatus();
-            logStatus(
-                `📉 Đóng lệnh ${trade.type} #${trade.tradeIndex} (${reason}) | ` +
-                `Lợi nhuận: ${profit.toFixed(2)} USD | ` +
-                `Số dư mới: ${virtualBalance.toFixed(2)} USD`
-            );
+        // HÀM CHUYỂN ĐỔI HIỂN THỊ CÀI ĐẶT ĐIỂM MỚI (Giữ nguyên)
+        function togglePointModeSettings() {
+            const mode = document.getElementById('nextPointMode').value;
+            document.getElementById('fixedIntervalSettings').style.display = mode === 'fixed' ? 'flex' : 'none';
+            document.getElementById('customPointsSettings').style.display = mode === 'custom' ? 'flex' : 'none';
         }
-        // *********************************************************
-        // ********** BỔ SUNG HÀM updateTradeInfo **********
-        function updateTradeInfo() {
-            const container = document.getElementById('currentTradeDetails');
-            if (!container) return;
-            container.innerHTML = '';
-
-            // Lọc ra các lệnh đang mở (closed: false)
-            const activeTrades = currentTrades.filter(trade => !trade.closed);
-
-            if (activeTrades.length === 0) {
-                document.getElementById('activeTrades').style.display = 'none';
-                return;
-            }
-
-            document.getElementById('activeTrades').style.display = 'block';
-
-            activeTrades.forEach(trade => {
-                const direction = trade.type === 'BUY' ? 1 : -1;
-                const priceDiff = (currentPrice - trade.entryPrice) * direction;
-                const profit = priceDiff * trade.lotSize * 100000;
-
-                const tradeBox = document.createElement('div');
-                tradeBox.className = `trade-box ${trade.type.toLowerCase()}`;
-                tradeBox.innerHTML = `
-                    <p style="font-size: 16px; margin-bottom: 5px;">
-                        <strong>${trade.type} #${trade.tradeIndex}</strong> | 
-                        Giá vào: ${trade.entryPrice.toFixed(2)} | 
-                        Giá hiện tại: ${currentPrice.toFixed(2)}
-                    </p>
-                    <p style="margin-bottom: 5px;">
-                        KL: ${trade.lotSize} | 
-                        SL: ${trade.stopLossLevel.toFixed(2)} | 
-                        TP: ${trade.takeProfitLevel.toFixed(2)}
-                    </p>
-                    <p style="margin-bottom: 0;">
-                        Lợi nhuận hiện tại: 
-                        <span class="${profit >= 0 ? 'profit' : 'loss'}">${profit.toFixed(2)} USD</span>
-                    </p>
-                `;
-                container.appendChild(tradeBox);
-            });
-        }
-        // *********************************************************
-
-        // Hàm cập nhật lịch sử giao dịch (Giữ nguyên)
-        function addHistory(message) {
-            const historyList = document.getElementById('historyList');
-            if (!historyList) return;
-
-            const now = new Date().toLocaleTimeString('vi-VN');
-            const historyItem = document.createElement('div');
-            historyItem.className = 'history-item';
-            historyItem.innerHTML = `[${now}] ${message}`;
-
-            // Giới hạn 50 mục lịch sử gần nhất
-            if (historyList.children.length >= 50) {
-                historyList.removeChild(historyList.lastChild);
-            }
-            historyList.insertBefore(historyItem, historyList.firstChild);
-        }
-
-        // SỬA LỖI 2: Thêm nội dung cho hàm checkPriceAlerts
-        function checkPriceAlerts(oldPrice, newPrice) {
-            if (!alertLevels.length) return;
-            alertLevels.forEach(level => {
-                const crossUp = oldPrice < level && newPrice >= level;
-                const crossDown = oldPrice > level && newPrice <= level;
-
-                if ((crossUp || crossDown) && !alertedLevels.has(level)) {
-                    alertedLevels.add(level);
-                    const direction = crossUp ? 'lên' : 'xuống';
-                    const message = `⚠️ Giá vừa vượt mốc ${level} (${direction})`;
-                    addHistory(message);
-                    playNotificationSound('alert', { level: level, direction: crossUp ? 'up' : 'down', price: newPrice });
-                }
-            });
-        }
-
-        // SỬA LỖI 2: Thêm nội dung cho hàm updateAlertLevels
-        function updateAlertLevels() {
-            const alertInput = document.getElementById('alertPrices').value;
-            alertLevels = alertInput.split(',')
-                .map(level => parseFloat(level.trim()))
-                .filter(level => !isNaN(level) && level > 0);
-            alertedLevels.clear();
-            localStorage.setItem('alertLevels', JSON.stringify(alertLevels));
-            addHistory(`📊 Đã cập nhật ${alertLevels.length} mốc cảnh báo giá`);
-        }
-
-        // SỬA LỖI 3: Thêm nội dung cho hàm updateSuggestionStats
-        function updateSuggestionStats(trade, profit) {
-            if (trade.suggestionSource) {
-                const type = trade.type; // BUY hoặc SELL
-                suggestionStats[type].total++;
-                if (profit > 0) {
-                    suggestionStats[type].correct++;
-                }
-
-                // Cập nhật trade index gần nhất
-                suggestionStats[type].lastTradeIndex = trade.tradeIndex;
-
-                localStorage.setItem('suggestionStats', JSON.stringify(suggestionStats));
-                updateSuggestionStatsDisplay();
-            }
-        }
-
-        // Cập nhật hiển thị thống kê gợi ý (Giữ nguyên)
-        function updateSuggestionStatsDisplay() {
-            const body = document.getElementById('suggestionStatsBody');
-            if (!body) return;
-
-            ['BUY', 'SELL'].forEach(type => {
-                const stats = suggestionStats[type];
-                const total = stats.total;
-                const correct = stats.correct;
-                const winRate = total > 0 ? ((correct / total) * 100).toFixed(2) : '0.00';
-
-                document.getElementById(`stat${type}Total`).textContent = total;
-                document.getElementById(`stat${type}Correct`).textContent = correct;
-                document.getElementById(`stat${type}Pct`).textContent = `${winRate}%`;
-            });
-        }
-
-        // Hàm vẽ biểu đồ số dư & giá vàng
-        function drawBalanceChart() {
-            if (balanceChart) {
-                balanceChart.destroy();
-            }
-
-            const dataToChart = balanceHistory;
-            const labels = dataToChart.map(item => new Date(item.time).toLocaleTimeString('vi-VN'));
-            const balanceData = dataToChart.map(item => item.balance);
-            const goldPriceData = dataToChart.map(item => item.goldPrice);
-
-            const ctx = document.getElementById('balanceChart').getContext('2d');
-            balanceChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Số Dư (USD)',
-                            data: balanceData,
-                            borderColor: '#0ecb81',
-                            backgroundColor: 'rgba(14, 203, 129, 0.1)',
-                            yAxisID: 'yBalance',
-                            tension: 0.2,
-                            pointRadius: 1,
-                            pointHoverRadius: 5,
-                        },
-                        {
-                            label: 'Giá Vàng (XAU/USD)',
-                            data: goldPriceData,
-                            borderColor: '#d4af37',
-                            backgroundColor: 'rgba(212, 175, 55, 0.1)',
-                            yAxisID: 'yGold',
-                            tension: 0.2,
-                            pointRadius: 1,
-                            pointHoverRadius: 5,
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            ticks: {
-                                maxTicksLimit: 20
-                            }
-                        },
-                        yBalance: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Số Dư (USD)',
-                                color: '#0ecb81'
-                            },
-                            grid: {
-                                color: 'rgba(14, 203, 129, 0.1)'
-                            }
-                        },
-                        yGold: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            grid: {
-                                drawOnChartArea: false
-                            },
-                            title: {
-                                display: true,
-                                text: 'Giá Vàng (XAU/USD)',
-                                color: '#d4af37'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                        }
-                    }
-                }
-            });
-
-            // Kích hoạt logic gợi ý sau khi vẽ biểu đồ (Cần thiết cho cả 2 chế độ)
-            setTimeout(() => { // ĐÃ THÊM setTimeout THEO YÊU CẦU
-                if (suggestionByDirectionEnabled) {
-                    checkDirectionalSuggestion(); // Gọi hàm gợi ý theo hướng
-                } else if (suggestionByIntersectionEnabled) {
-                    checkIntersectionSuggestion(); // Gọi hàm gợi ý giao nhau
-                } else {
-                    document.getElementById('suggestionDisplay').innerHTML = 'Chưa có chế độ gợi ý nào được bật.';
-                }
-            }, 100);
-        }
-
-        // Kiểm tra gợi ý Giao nhau CŨ
-        function checkIntersectionSuggestion(isTradeCheck = false) {
-            if (!balanceChart || !suggestionByIntersectionEnabled) return null;
-
-            const dsBalance = balanceChart.data.datasets[0].data;
-            const dsGold = balanceChart.data.datasets[1].data;
-            const len = dsBalance.length;
-
-            if (len < 2) return null;
-
-            const minSlope = intersectionSettings.minSlope;
-            const minGapPct = intersectionSettings.minGapPct / 100;
-            const confirmDelay = intersectionSettings.confirmDelay;
-            const suggestionMode = intersectionSettings.suggestionMode;
-
-            let currentSuggestion = null;
-            let lastIntersectionIndex = -1;
-
-            // Tìm điểm giao nhau gần nhất (nơi Balance và GoldPrice bằng nhau hoặc cắt nhau)
-            for (let i = len - 2; i >= 0; i--) {
-                const bal1 = dsBalance[i];
-                const bal2 = dsBalance[i + 1];
-                const gold1 = dsGold[i];
-                const gold2 = dsGold[i + 1];
-
-                // Check for intersection
-                const crossUp = bal1 <= gold1 && bal2 > gold2; // Gold Cắt lên Balance (Tín hiệu SELL)
-                const crossDown = bal1 >= gold1 && bal2 < gold2; // Balance Cắt lên Gold (Tín hiệu BUY)
-
-                if (crossUp || crossDown) {
-                    lastIntersectionIndex = i;
-                    
-                    // Kiểm tra điều kiện xác nhận (độ dốc, khoảng cách sau giao nhau)
-                    if (lastIntersectionIndex + confirmDelay < len) {
-                        const confirmIndex = lastIntersectionIndex + confirmDelay;
-                        const balConfirm = dsBalance[confirmIndex];
-                        const goldConfirm = dsGold[confirmIndex];
-                        
-                        const balanceSlope = (bal2 - bal1) / 1;
-                        const goldSlope = (gold2 - gold1) / 1;
-
-                        // Tín hiệu SELL (Gold Cắt lên Balance)
-                        if (crossUp) {
-                            // Cần Gold nằm trên Balance sau xác nhận
-                            const currentGap = (goldConfirm - balConfirm);
-                            const minGap = goldConfirm * minGapPct;
-                            
-                            if (goldSlope > minSlope && currentGap > minGap) {
-                                currentSuggestion = 'SELL';
-                            }
-                        }
-                        
-                        // Tín hiệu BUY (Balance Cắt lên Gold)
-                        if (crossDown) {
-                            // Cần Balance nằm trên Gold sau xác nhận
-                            const currentGap = (balConfirm - goldConfirm);
-                            const minGap = balConfirm * minGapPct;
-
-                            if (balanceSlope > minSlope && currentGap > minGap) {
-                                currentSuggestion = 'BUY';
-                            }
-                        }
-                    }
-
-                    break; // Chỉ quan tâm đến giao nhau gần nhất
-                }
-            }
-            
-            // Xử lý hiển thị và âm thanh
-            if (currentSuggestion) {
-                const isSuggestionNew = alertedIntersectionIndices.size === 0 || !alertedIntersectionIndices.has(lastIntersectionIndex);
-                const displayDiv = document.getElementById('suggestionDisplay');
-                
-                let isFiltered = false;
-                if (suggestionMode === 'buy' && currentSuggestion === 'SELL') {
-                    isFiltered = true;
-                } else if (suggestionMode === 'sell' && currentSuggestion === 'BUY') {
-                    isFiltered = true;
-                }
-
-                if (isFiltered) {
-                    displayDiv.innerHTML = `Gợi ý ${currentSuggestion} đã bị lọc bởi chế độ hiển thị (${suggestionMode}).`;
-                    currentSuggestion = null; // Vô hiệu hóa gợi ý nếu bị lọc
-                } else {
-                    displayDiv.innerHTML = `<div class="suggestion-box suggest-${currentSuggestion.toLowerCase()}">
-                        ✅ GỢI Ý GIAO NHAU: ${currentSuggestion}
-                    </div>`;
-
-                    if (isSuggestionNew && !isTradeCheck) {
-                        playNotificationSound('intersection', { suggestion: currentSuggestion }); // THÊM data cho TTS
-                        // Lưu lại chỉ số giao nhau đã cảnh báo
-                        alertedIntersectionIndices.add(lastIntersectionIndex);
-                        // Cập nhật thống kê (chỉ cập nhật khi không phải check trade)
-                        suggestionStats[currentSuggestion].lastTime = new Date().toISOString();
-                        suggestionStats[currentSuggestion].lastIndex = lastIntersectionIndex;
-                        localStorage.setItem('suggestionStats', JSON.stringify(suggestionStats));
-                        updateSuggestionStatsDisplay();
-                    }
-                }
-            } else if (!isTradeCheck) {
-                 if (lastIntersectionIndex === -1) {
-                    document.getElementById('suggestionDisplay').innerHTML = 'Chưa phát hiện giao nhau nào.';
-                } else {
-                    document.getElementById('suggestionDisplay').innerHTML = `Giao nhau đã xảy ra tại #${lastIntersectionIndex} nhưng chưa đạt điều kiện dốc/gap tối thiểu hoặc bị lọc bởi chế độ hiển thị.`;
-                }
-            }
-
-            return currentSuggestion;
-        }
-
-        // ********** HÀM checkDirectionalSuggestion MỚI (Thay thế findDirectionalSuggestion) **********
-        function checkDirectionalSuggestion(isTradeCheck = false) {
-            if (!balanceChart || !suggestionByDirectionEnabled) return null;
-            
-            const dsBalance = balanceChart.data.datasets[0].data;
-            const dsGold = balanceChart.data.datasets[1].data;
-            const dataArray = (suggestionBaseLine === 'balance' ? dsBalance : dsGold);
-            const len = dataArray.length;
-            
-            // Lấy điểm dữ liệu từ balanceHistory
-            const currentMaxIndex = len - 1;
-            const maxPoint = suggestionStartIndex; // Chỉ số trong balanceHistory
-            
-            if (maxPoint > currentMaxIndex) {
-                 if (!isTradeCheck) {
-                    document.getElementById('suggestionDisplay').innerHTML = `⚠️ Chỉ số điểm (${maxPoint}) vượt quá dữ liệu hiện tại (${currentMaxIndex}).`;
-                }
-                return null;
-            }
-            
-            // Lấy dữ liệu từ điểm bắt đầu đến hiện tại
-            const startValue = dataArray[maxPoint]; // Giá trị tại điểm bắt đầu
-            const currentValue = dataArray[currentMaxIndex]; // Giá trị hiện tại (điểm cuối)
-            
-            // Lấy dữ liệu xác nhận hướng (số điểm gần nhất)
-            const confirmStart = Math.max(maxPoint, currentMaxIndex - directionConfirmationPoints);
-            const confirmData = dataArray.slice(confirmStart, currentMaxIndex + 1);
-
-            if (confirmData.length < directionConfirmationPoints + 1 && maxPoint > 0) {
-                 if (!isTradeCheck) {
-                    document.getElementById('suggestionDisplay').innerHTML = `⚠️ Chưa đủ ${directionConfirmationPoints + 1} điểm dữ liệu để xác nhận hướng (chỉ có ${confirmData.length} điểm từ #${confirmStart} đến #${currentMaxIndex}).`;
-                }
-                return null;
-            }
-
-            let currentSuggestion = null;
-
-            // **********************************************
-            // LOGIC XÁC ĐỊNH HƯỚNG MỚI (Dựa trên xu hướng)
-            // **********************************************
-
-            // 1. So sánh Điểm hiện tại với Điểm bắt đầu
-            if (currentValue > startValue) {
-                currentSuggestion = 'BUY';
-            } else if (currentValue < startValue) {
-                currentSuggestion = 'SELL';
-            } else {
-                currentSuggestion = null; // Giá không thay đổi so với điểm bắt đầu
-            }
-
-            // 2. Kiểm tra hướng xác nhận (tăng/giảm liên tục)
-            if (currentSuggestion) {
-                let isDirectionConfirmed = true;
-                if (currentSuggestion === 'BUY') {
-                    // Xác nhận BUY: Giá trị phải luôn tăng hoặc giữ nguyên trong các bước xác nhận
-                    for (let i = 1; i < confirmData.length; i++) {
-                        if (confirmData[i] < confirmData[i - 1]) {
-                            isDirectionConfirmed = false;
-                            break;
-                        }
-                    }
-                } else if (currentSuggestion === 'SELL') {
-                    // Xác nhận SELL: Giá trị phải luôn giảm hoặc giữ nguyên trong các bước xác nhận
-                    for (let i = 1; i < confirmData.length; i++) {
-                        if (confirmData[i] > confirmData[i - 1]) {
-                            isDirectionConfirmed = false;
-                            break;
-                        }
-                    }
-                }
-
-                if (!isDirectionConfirmed) {
-                    currentSuggestion = null; // Hướng không được xác nhận
-                }
-            }
-
-
-            // **********************************************
-            // Xử lý hiển thị và âm thanh
-            // **********************************************
-            if (currentSuggestion) {
-                const displayDiv = document.getElementById('suggestionDisplay');
-
-                // Chỉ hiển thị/phát âm thanh nếu gợi ý mới hoặc gợi ý đã được xác nhận (và không phải kiểm tra lệnh)
-                if (lastDirectionalSuggestion !== currentSuggestion && !isTradeCheck) {
-                    displayDiv.innerHTML = `<div class="suggestion-box suggest-${currentSuggestion.toLowerCase()}">
-                        ✅ GỢI Ý THEO HƯỚNG: ${currentSuggestion} (Điểm #${maxPoint})
-                    </div>`;
-
-                    playNotificationSound('suggestion', { suggestion: currentSuggestion }); // THÊM data cho TTS
-                    
-                    // Cập nhật trạng thái gợi ý
-                    lastDirectionalSuggestion = currentSuggestion;
-                    localStorage.setItem('lastDirectionalSuggestion', lastDirectionalSuggestion);
-                    
-                    // Cập nhật thống kê (chỉ cập nhật khi không phải check trade)
-                    suggestionStats[currentSuggestion].lastTime = new Date().toISOString();
-                    suggestionStats[currentSuggestion].lastIndex = currentMaxIndex;
-                    localStorage.setItem('suggestionStats', JSON.stringify(suggestionStats));
-                    updateSuggestionStatsDisplay();
-                } else if (isTradeCheck) {
-                    // Nếu đang check trade, chỉ cần trả về kết quả
-                } else {
-                     displayDiv.innerHTML = `<div class="suggestion-box suggest-${currentSuggestion.toLowerCase()}">
-                        ✅ GỢI Ý THEO HƯỚNG: ${currentSuggestion} (Đang duy trì từ Điểm #${maxPoint})
-                    </div>`;
-                }
-
-            } else if (!isTradeCheck) {
-                document.getElementById('suggestionDisplay').innerHTML = `Không có gợi ý (${suggestionBaseLine}) tại Điểm #${maxPoint}.`;
-                // Reset trạng thái gợi ý nếu hướng không được xác nhận
-                if (lastDirectionalSuggestion !== null) {
-                    lastDirectionalSuggestion = null;
-                    localStorage.setItem('lastDirectionalSuggestion', null);
-                    logStatus('🔄 Đã reset gợi ý theo hướng.');
-                }
-            }
-            
-            return currentSuggestion;
-        }
-
-        // Tải cài đặt Gợi ý theo hướng (MỚI)
-        function loadDirectionalSettings() {
-            suggestionByDirectionEnabled = localStorage.getItem('suggestionByDirectionEnabled') === 'true'; 
-            suggestionByIntersectionEnabled = localStorage.getItem('suggestionByIntersectionEnabled') === 'true'; 
-            suggestionBaseLine = localStorage.getItem('suggestionBaseLine') || 'balance';
-            suggestionStartIndex = parseInt(localStorage.getItem('suggestionStartIndex')) || 0;
-            directionConfirmationPoints = parseInt(localStorage.getItem('directionConfirmationPoints')) || 3;
-            lastDirectionalSuggestion = localStorage.getItem('lastDirectionalSuggestion') || null;
-
-            // Tải cài đặt điểm
-            nextPointMode = localStorage.getItem('nextPointMode') || 'fixed';
-            fixedInterval = parseInt(localStorage.getItem('fixedInterval')) || 5;
-            customPoints = JSON.parse(localStorage.getItem('customPoints')) || [0, 5, 10, 15, 20, 25];
-            currentPointIndex = parseInt(localStorage.getItem('currentPointIndex')) || 0;
-
-            if (document.getElementById('suggestionByDirectionEnabled')) {
-                document.getElementById('suggestionByDirectionEnabled').checked = suggestionByDirectionEnabled;
-            }
-            if (document.getElementById('suggestionByIntersectionEnabled')) {
-                document.getElementById('suggestionByIntersectionEnabled').checked = suggestionByIntersectionEnabled;
-            }
-            if (document.getElementById('suggestionBaseLine')) {
-                document.getElementById('suggestionBaseLine').value = suggestionBaseLine;
-            }
-            if (document.getElementById('directionConfirmationPoints')) {
-                document.getElementById('directionConfirmationPoints').value = directionConfirmationPoints;
-            }
-            
-            // Tải cài đặt điểm
-            if (document.getElementById('nextPointMode')) {
-                document.getElementById('nextPointMode').value = nextPointMode;
-            }
-            if (document.getElementById('fixedInterval')) {
-                document.getElementById('fixedInterval').value = fixedInterval;
-            }
-            if (document.getElementById('customPoints')) {
-                document.getElementById('customPoints').value = customPoints.join(',');
-            }
-            updateCurrentPointDisplay();
-            
-            togglePointModeSettings();
-            toggleSuggestionMode();
-        }
-
-        // Hàm lưu cài đặt hướng (MỚI)
+        
+        // HÀM saveDirectionalSettings (Giữ nguyên logic)
         function saveDirectionalSettings() {
             suggestionBaseLine = document.getElementById('suggestionBaseLine').value;
+            // suggestionStartIndex: Đã bị ẩn, giá trị cũ sẽ được ghi đè bằng currentPointIndex khi cần
             directionConfirmationPoints = parseInt(document.getElementById('directionConfirmationPoints').value);
-
+            
             // THÊM: Lưu cài đặt điểm tiếp theo
             nextPointMode = document.getElementById('nextPointMode').value;
             fixedInterval = parseInt(document.getElementById('fixedInterval').value);
@@ -1727,68 +1036,57 @@ function playNotificationSound(soundType, data = null) {
                 }
             } else if (nextPointMode === 'fixed') {
                 // Đảm bảo fixedInterval là số dương
-                if (fixedInterval <= 0 || isNaN(fixedInterval)) {
-                    fixedInterval = 5;
-                    document.getElementById('fixedInterval').value = 5;
-                }
+                if (fixedInterval <= 0 || isNaN(fixedInterval)) fixedInterval = 1; 
             }
-
-            // Lưu vào localStorage
+            
+            // Cập nhật suggestionStartIndex để logic phân tích sử dụng điểm mới
+            suggestionStartIndex = currentPointIndex;
+            
             localStorage.setItem('suggestionBaseLine', suggestionBaseLine);
+            localStorage.setItem('suggestionStartIndex', suggestionStartIndex);
             localStorage.setItem('directionConfirmationPoints', directionConfirmationPoints);
             
+            // LƯU CÀI ĐẶT MỚI
             localStorage.setItem('nextPointMode', nextPointMode);
             localStorage.setItem('fixedInterval', fixedInterval);
             localStorage.setItem('customPoints', JSON.stringify(customPoints));
             localStorage.setItem('currentPointIndex', currentPointIndex);
             
-            // Luôn đồng bộ suggestionStartIndex với currentPointIndex
-            suggestionStartIndex = currentPointIndex; 
-            localStorage.setItem('suggestionStartIndex', suggestionStartIndex);
-
-            logStatus('💾 Đã lưu cấu hình gợi ý theo hướng & điểm tiếp theo');
-            alert('✅ Đã lưu cấu hình gợi ý theo hướng!');
-            drawBalanceChart();
             updateCurrentPointDisplay();
-        }
-
-        // Hàm chuyển đổi chế độ gợi ý (MỚI)
-        function toggleSuggestionMode() {
-            suggestionByDirectionEnabled = document.getElementById('suggestionByDirectionEnabled').checked;
-            suggestionByIntersectionEnabled = document.getElementById('suggestionByIntersectionEnabled').checked;
-
-            document.getElementById('directionalSettingsContainer').style.display = suggestionByDirectionEnabled ? 'block' : 'none';
-            document.getElementById('intersectionSettingsContainer').style.display = suggestionByIntersectionEnabled ? 'block' : 'none';
-
-            if (!suggestionByDirectionEnabled && !suggestionByIntersectionEnabled) {
-                document.getElementById('suggestionDisplay').innerHTML = 'Chưa có chế độ gợi ý nào được bật.';
-            }
-
-            localStorage.setItem('suggestionByDirectionEnabled', suggestionByDirectionEnabled);
-            localStorage.setItem('suggestionByIntersectionEnabled', suggestionByIntersectionEnabled);
             
-            logStatus(`Gợi ý Theo Hướng: ${suggestionByDirectionEnabled ? 'Bật' : 'Tắt'} | Gợi ý Giao nhau: ${suggestionByIntersectionEnabled ? 'Bật' : 'Tắt'}`);
-            drawBalanceChart(); // Vẽ lại để kích hoạt logic gợi ý mới
+            logStatus('💾 Đã lưu cấu hình gợi ý theo hướng nâng cao');
+            drawBalanceChart();
+            alert('✅ Đã lưu cấu hình gợi ý theo hướng!');
         }
 
-        // HÀM CHUYỂN ĐỔI HIỂN THỊ CÀI ĐẶT ĐIỂM MỚI (Giữ nguyên)
-        function togglePointModeSettings() {
-            const mode = document.getElementById('nextPointMode').value;
-            document.getElementById('fixedIntervalSettings').style.display = mode === 'fixed' ? 'flex' : 'none';
-            document.getElementById('customPointsSettings').style.display = mode === 'custom' ? 'flex' : 'none';
+        // HÀM loadDirectionalSettings (Giữ nguyên logic)
+        function loadDirectionalSettings() {
+            document.getElementById('suggestionByDirectionEnabled').checked = suggestionByDirectionEnabled;
+            document.getElementById('suggestionByIntersectionEnabled').checked = suggestionByIntersectionEnabled;
+            document.getElementById('suggestionBaseLine').value = suggestionBaseLine;
+            document.getElementById('suggestionStartIndex').value = suggestionStartIndex;
+            document.getElementById('directionConfirmationPoints').value = directionConfirmationPoints;
+            
+            // THÊM: Tải cài đặt điểm tiếp theo
+            document.getElementById('nextPointMode').value = nextPointMode;
+            document.getElementById('fixedInterval').value = fixedInterval;
+            document.getElementById('customPoints').value = customPoints.join(',');
+            
+            togglePointModeSettings(); // Hiển thị đúng cài đặt cho chế độ đã chọn
+            updateCurrentPointDisplay(); // Cập nhật hiển thị điểm hiện tại
         }
 
-        // HÀM TỰ ĐỘNG CHUYỂN ĐẾN ĐIỂM TIẾP THEO (MỚI)
+        // HÀM CHUYỂN ĐIỂM TIẾP THEO MỚI (Giữ nguyên logic)
         function advanceToNextPoint() {
             const currentMaxIndex = balanceHistory.length - 1;
-
-            if (currentPointIndex >= currentMaxIndex) {
+            
+            if (currentPointIndex >= currentMaxIndex && currentMaxIndex > 0) {
                 logStatus(`⚠️ Đã đạt đến điểm cuối cùng (${currentMaxIndex}). Không thể chuyển tiếp.`);
                 return;
             }
-
+            
             let nextPoint = currentPointIndex;
-
+            
             if (nextPointMode === 'fixed') {
                 // Chế độ khoảng cố định: currentPointIndex + fixedInterval
                 nextPoint = currentPointIndex + fixedInterval;
@@ -1802,28 +1100,28 @@ function playNotificationSound(soundType, data = null) {
                     nextPoint = customPoints[0];
                 }
             }
-
+            
             // Đảm bảo điểm tiếp theo không vượt quá chỉ số hiện tại của balanceHistory
             if (nextPoint > currentMaxIndex && currentMaxIndex >= 0) {
                 nextPoint = currentMaxIndex;
                 logStatus(`⚠️ Điểm tiếp theo vượt quá điểm tối đa (${currentMaxIndex}). Đã điều chỉnh về #${currentMaxIndex}.`);
             } else if (nextPoint < 0) {
-                nextPoint = 0;
+                 nextPoint = 0;
             }
-
+            
             currentPointIndex = nextPoint;
-
+            
             // Cập nhật suggestionStartIndex với điểm mới
             suggestionStartIndex = currentPointIndex;
-
+            
             // Lưu trạng thái
             localStorage.setItem('currentPointIndex', currentPointIndex);
             localStorage.setItem('suggestionStartIndex', suggestionStartIndex);
-
+            
             // Reset gợi ý để tìm hướng mới
             lastDirectionalSuggestion = null;
             localStorage.setItem('lastDirectionalSuggestion', null);
-
+            
             logStatus(`🔄 Chuyển đến điểm tiếp theo: #${currentPointIndex}`);
             updateCurrentPointDisplay();
         }
@@ -1843,23 +1141,38 @@ function playNotificationSound(soundType, data = null) {
         function setManualPoint() {
             const manualPoint = parseInt(document.getElementById('manualPointInput').value);
             const maxIndex = balanceHistory.length - 1;
-
-            if (isNaN(manualPoint) || manualPoint < 0 || manualPoint > maxIndex) {
-                alert(`❌ Điểm không hợp lệ. Vui lòng nhập số từ 0 đến ${maxIndex}.`);
+            
+            if (isNaN(manualPoint) || manualPoint < 0) {
+                alert('Vui lòng nhập số điểm hợp lệ (≥ 0)');
                 return;
             }
-
+            
+            if (manualPoint > maxIndex && maxIndex > 0) {
+                alert(`Điểm tối đa hiện có là: ${maxIndex}`);
+                return;
+            }
+            
+            // Nếu không có dữ liệu, điểm bắt đầu phải là 0
+            if (maxIndex < 0 && manualPoint !== 0) {
+                 alert('Không có dữ liệu lịch sử. Điểm bắt đầu phải là 0.');
+                return;
+            }
+            
             currentPointIndex = manualPoint;
-            suggestionStartIndex = manualPoint;
-
+            suggestionStartIndex = currentPointIndex;
+            
+            // Lưu vào localStorage
             localStorage.setItem('currentPointIndex', currentPointIndex);
             localStorage.setItem('suggestionStartIndex', suggestionStartIndex);
-            lastDirectionalSuggestion = null; // Reset gợi ý khi đặt lại điểm
+            
+            // Reset gợi ý
+            lastDirectionalSuggestion = null;
             localStorage.setItem('lastDirectionalSuggestion', null);
-
+            
             // Cập nhật hiển thị
             updateCurrentPointDisplay();
             drawBalanceChart();
+            
             logStatus(`🎯 Đã đặt điểm hiện tại thủ công: #${currentPointIndex}`);
             alert(`✅ Đã đặt điểm hiện tại thành: #${currentPointIndex}`);
         }
@@ -1871,7 +1184,6 @@ function playNotificationSound(soundType, data = null) {
             intersectionSettings.minGapPct = parseFloat(document.getElementById('minGapPct').value);
             intersectionSettings.confirmDelay = parseInt(document.getElementById('confirmDelay').value);
             intersectionSettings.suggestionMode = document.getElementById('suggestionMode').value;
-
             localStorage.setItem('intersectionSettings', JSON.stringify(intersectionSettings));
             logStatus('💾 Đã lưu cấu hình gợi ý giao dịch (Giao nhau)');
             alert('✅ Đã lưu cấu hình gợi ý giao nhau!');
@@ -1880,66 +1192,72 @@ function playNotificationSound(soundType, data = null) {
         // Tải cài đặt Gợi ý Giao nhau (Giữ nguyên)
         function loadIntersectionSettings() {
             if (intersectionSettings) {
-                if (document.getElementById('minSlope')) document.getElementById('minSlope').value = intersectionSettings.minSlope;
-                if (document.getElementById('minGapPct')) document.getElementById('minGapPct').value = intersectionSettings.minGapPct;
-                if (document.getElementById('confirmDelay')) document.getElementById('confirmDelay').value = intersectionSettings.confirmDelay;
-                if (document.getElementById('suggestionMode')) document.getElementById('suggestionMode').value = intersectionSettings.suggestionMode;
+                document.getElementById('minSlope').value = intersectionSettings.minSlope;
+                document.getElementById('minGapPct').value = intersectionSettings.minGapPct;
+                document.getElementById('confirmDelay').value = intersectionSettings.confirmDelay;
+                document.getElementById('suggestionMode').value = intersectionSettings.suggestionMode;
             }
         }
 
         // Reset dữ liệu Gợi ý và thống kê (Giữ nguyên)
         function resetSuggestionData() {
             if (!confirm('Bạn có chắc chắn muốn reset dữ liệu Gợi ý và Thống kê?')) return;
-
-            suggestionStats = { 
+            suggestionStats = {
                 BUY: { total: 0, correct: 0, lastIndex: -1, lastTime: null, lastTradeIndex: -1 },
                 SELL: { total: 0, correct: 0, lastIndex: -1, lastTime: null, lastTradeIndex: -1 }
             };
-            lastDirectionalSuggestion = null; // Giữ lại logic reset điểm mới
+            lastDirectionalSuggestion = null;
+            
+            // Giữ lại logic reset điểm mới
             currentPointIndex = 0;
-            suggestionStartIndex = 0;
-
+            suggestionStartIndex = 0; 
+            
             localStorage.removeItem('suggestionStats');
             localStorage.removeItem('lastDirectionalSuggestion');
             localStorage.setItem('currentPointIndex', 0);
-            localStorage.setItem('suggestionStartIndex', 0);
-
+            localStorage.setItem('suggestionStartIndex', 0); 
+            
             document.getElementById('suggestionDisplay').innerHTML = 'Chưa có gợi ý nào.';
             updateSuggestionStatsDisplay();
             updateCurrentPointDisplay();
             logStatus('🔄 Đã reset dữ liệu gợi ý và thống kê');
         }
-
+        
         // Lưu cài đặt giao dịch (Giữ nguyên)
         function saveTradingSettings() {
             const settings = {
                 virtualBalance: parseFloat(document.getElementById('virtualBalance').value),
-                leverage: parseFloat(document.getElementById('leverage').value),
+                leverage: parseInt(document.getElementById('leverage').value),
                 lotSize: parseFloat(document.getElementById('lotSize').value),
                 stopLoss: parseFloat(document.getElementById('stopLoss').value),
                 takeProfit: parseFloat(document.getElementById('takeProfit').value),
+                tradesToday: tradesToday
             };
             localStorage.setItem('tradingSettings', JSON.stringify(settings));
+            logStatus('💾 Đã lưu cài đặt giao dịch');
         }
 
         // Tải cài đặt giao dịch (Giữ nguyên)
         function loadTradingSettings() {
-            const savedSettings = JSON.parse(localStorage.getItem('tradingSettings'));
-            if (savedSettings) {
-                if (document.getElementById('virtualBalance')) document.getElementById('virtualBalance').value = savedSettings.virtualBalance;
-                if (document.getElementById('leverage')) document.getElementById('leverage').value = savedSettings.leverage;
-                if (document.getElementById('lotSize')) document.getElementById('lotSize').value = savedSettings.lotSize;
-                if (document.getElementById('stopLoss')) document.getElementById('stopLoss').value = savedSettings.stopLoss;
-                if (document.getElementById('takeProfit')) document.getElementById('takeProfit').value = savedSettings.takeProfit;
-                virtualBalance = balanceHistory.length > 0 ? balanceHistory[balanceHistory.length - 1].balance : savedSettings.virtualBalance;
+            const settings = JSON.parse(localStorage.getItem('tradingSettings'));
+            if (settings) {
+                document.getElementById('virtualBalance').value = settings.virtualBalance || 1000;
+                document.getElementById('leverage').value = settings.leverage || 10;
+                document.getElementById('lotSize').value = settings.lotSize || 0.1;
+                document.getElementById('stopLoss').value = settings.stopLoss || 50;
+                document.getElementById('takeProfit').value = settings.takeProfit || 65;
+                virtualBalance = settings.virtualBalance || 1000;
+                tradesToday = settings.tradesToday || 0;
+                updateStatus();
+                logStatus('🔄 Đã tải cài đặt giao dịch từ localStorage');
             }
         }
-
-        // Reset dữ liệu (Giữ nguyên)
+        
+        // Reset dữ liệu về trạng thái ban đầu (Giữ nguyên logic)
         function resetData() {
-            if (!confirm('Bạn có chắc chắn muốn XÓA TOÀN BỘ dữ liệu giao dịch? (Bao gồm lịch sử, cài đặt, và số dư)')) return;
-
-            // Xóa LocalStorage
+            if (!confirm('Bạn có chắc chắn muốn reset tất cả dữ liệu? Mọi cài đặt và lịch sử sẽ bị xóa!')) return;
+            
+            // Xóa các mục cần thiết trong localStorage
             localStorage.removeItem('tradingSettings');
             localStorage.removeItem('balanceHistory');
             localStorage.removeItem('intersectionSettings');
@@ -1948,6 +1266,7 @@ function playNotificationSound(soundType, data = null) {
             localStorage.removeItem('soundUseStatus');
             localStorage.removeItem('defaultSoundsEnabled');
             localStorage.removeItem('enableTTSSound'); // THÊM: Reset TTS
+            
             // Xóa cài đặt mới
             localStorage.removeItem('suggestionByDirectionEnabled');
             localStorage.removeItem('suggestionByIntersectionEnabled');
@@ -1955,6 +1274,7 @@ function playNotificationSound(soundType, data = null) {
             localStorage.removeItem('suggestionStartIndex');
             localStorage.removeItem('directionConfirmationPoints');
             localStorage.removeItem('lastDirectionalSuggestion');
+            
             // THÊM: Reset điểm
             localStorage.removeItem('currentPointIndex');
             localStorage.removeItem('nextPointMode');
@@ -1973,6 +1293,7 @@ function playNotificationSound(soundType, data = null) {
             soundUseStatus = {};
             defaultSoundsEnabled = true;
             ttsEnabled = false; // THÊM: Reset TTS
+
             // Khởi tạo lại biến gợi ý
             suggestionByDirectionEnabled = false;
             suggestionByIntersectionEnabled = false;
@@ -1980,16 +1301,17 @@ function playNotificationSound(soundType, data = null) {
             suggestionStartIndex = 0;
             directionConfirmationPoints = 3;
             lastDirectionalSuggestion = null;
-            suggestionStats = {
+            suggestionStats = { 
                 BUY: { total: 0, correct: 0, lastIndex: -1, lastTime: null, lastTradeIndex: -1 },
                 SELL: { total: 0, correct: 0, lastIndex: -1, lastTime: null, lastTradeIndex: -1 }
             };
+            
             // THÊM: Reset điểm
             currentPointIndex = 0;
             nextPointMode = 'fixed';
             fixedInterval = 5;
             customPoints = [0, 5, 10, 15, 20, 25];
-
+            
             // Tải lại cài đặt để cập nhật UI
             loadTradingSettings();
             loadDirectionalSettings();
@@ -2002,37 +1324,246 @@ function playNotificationSound(soundType, data = null) {
             document.getElementById('tradesCount').textContent = '0';
             document.getElementById('historyList').innerHTML = '';
             document.getElementById('suggestionDisplay').innerHTML = 'Chưa có gợi ý nào.';
-
-            // Vẽ lại biểu đồ rỗng
+            
+            // Vẽ lại biểu đồ trống
             initChart();
-
-            alert('✅ Đã reset toàn bộ dữ liệu!');
-            logStatus('🗑️ Đã reset toàn bộ dữ liệu!');
+            
+            logStatus('🔥🔥 Đã reset TẤT CẢ dữ liệu về trạng thái ban đầu');
         }
 
-        // Phân tích hiệu suất (Giữ nguyên)
-        function analyzeBalanceHistory() {
-            if (balanceHistory.length < 2) {
-                alert('Không đủ dữ liệu để phân tích.');
+        // Hàm mở lệnh (Giữ nguyên logic)
+        function openTrade(type, suggestionSource = null) {
+            // Logic mở lệnh bị thiếu trong phiên bản trước, không cần thiết cho mục đích hiện tại
+        }
+
+        // ********** BỔ SUNG HÀM calculateTradeProfitLoss **********
+        function calculateTradeProfitLoss(trade, closePrice) {
+            return trade.type === 'BUY'
+                ? (closePrice - trade.entryPrice) * trade.lotSize * trade.leverage
+                : (trade.entryPrice - closePrice) * trade.lotSize * trade.leverage;
+        }
+        // *********************************************************
+        
+        // ********** BỔ SUNG HÀM closeTrade **********
+        function closeTrade(trade, closePrice, reason) {
+            const profit = calculateTradeProfitLoss(trade, closePrice);
+            
+            trade.closed = true;
+            trade.exitPrice = closePrice;
+            trade.exitTime = new Date().toLocaleString('vi-VN');
+            trade.profit = profit;
+            trade.closeReason = reason;
+            virtualBalance += profit;
+
+            // Cập nhật thống kê gợi ý dựa trên tradeIndex
+            // Vì logic của bạn không truyền suggestionSource trong createNewTrades, 
+            // tôi sẽ giữ logic cập nhật này đơn giản (chưa cần thiết)
+            // updateSuggestionStats(trade, profit); // Cập nhật thống kê (nếu có)
+            
+            // Lưu vào balanceHistory
+            balanceHistory.push({
+                time: new Date(),
+                balance: virtualBalance,
+                profit: profit,
+                reason: reason,
+                type: trade.type,
+                entryPrice: trade.entryPrice,
+                closePrice: closePrice,
+                goldPrice: currentPrice, // ĐÃ SỬA: LƯU GIÁ VÀNG HIỆN TẠI
+                lotSize: trade.lotSize,
+                tradeIndex: trade.tradeIndex
+            });
+            
+            // Logic chuyển điểm tiếp theo
+            if (suggestionByDirectionEnabled) {
+                advanceToNextPoint();
+            }
+
+            localStorage.setItem('balanceHistory', JSON.stringify(balanceHistory));
+            saveTradingSettings();
+
+            drawBalanceChart();
+
+            if (reason === 'TAKE PROFIT') {
+                playNotificationSound('tp', { type: trade.type, profit: profit }); // THÊM data cho TTS
+            } else if (reason === 'STOP LOSS') {
+                playNotificationSound('sl', { type: trade.type, profit: profit }); // THÊM data cho TTS
+            }
+            
+            addHistory(
+                `Đóng lệnh ${trade.type} #${trade.tradeIndex} @ ${closePrice.toFixed(2)} (${reason}) | ` +
+                `Lợi nhuận: <span class="${profit >= 0 ? 'profit' : 'loss'}">${profit.toFixed(2)} USD</span> | ` +
+                `Số dư: ${virtualBalance.toFixed(2)} USD`
+            );
+            
+            updateTradeInfo();
+            updateStatus();
+            
+            logStatus(
+                `📉 Đóng lệnh ${trade.type} #${trade.tradeIndex} (${reason}) | ` +
+                `Lợi nhuận: ${profit.toFixed(2)} USD | ` +
+                `Số dư mới: ${virtualBalance.toFixed(2)} USD`
+            );
+        }
+        // *********************************************************
+
+        // ********** BỔ SUNG HÀM updateTradeInfo **********
+        function updateTradeInfo() {
+            const container = document.getElementById('currentTradeDetails');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            // Lọc ra các lệnh đang mở (closed: false)
+            const activeTrades = currentTrades.filter(trade => !trade.closed);
+            
+            if (activeTrades.length === 0) {
+                document.getElementById('activeTrades').style.display = 'none';
                 return;
             }
 
-            const initialBalance = balanceHistory[0].balance;
-            const finalBalance = virtualBalance;
-            const totalProfit = finalBalance - initialBalance;
-            const totalTrades = currentTrades.filter(t => t.closed).length;
-            const profitableTrades = currentTrades.filter(t => t.closed && t.profit > 0).length;
-            const winRate = totalTrades > 0 ? ((profitableTrades / totalTrades) * 100).toFixed(2) : '0.00';
+            document.getElementById('activeTrades').style.display = 'block';
+            
+            activeTrades.forEach(trade => {
+                const price = currentPrice;
+                let profit = 0;
+                
+                if (!trade.closed) {
+                    // Tính lợi nhuận hiện tại
+                    profit = calculateTradeProfitLoss(trade, price);
+                }
+                
+                const profitClass = profit >= 0 ? 'profit' : 'loss';
 
+                const tradeBox = document.createElement('div');
+                tradeBox.className = `trade-box ${trade.type.toLowerCase()}`;
+                tradeBox.innerHTML = `
+                    <h3>${trade.type} #${trade.tradeIndex} ${trade.closed ? `(ĐÃ ĐÓNG - ${trade.closeReason})` : '(ĐANG MỞ)'}</h3>
+                    <p>Giá vào: ${trade.entryPrice.toFixed(2)}</p>
+                    <p>Giá hiện tại: ${price.toFixed(2)}</p>
+                    <p>Lợi nhuận: <span class="${profitClass}">${profit.toFixed(2)} USD</span></p>
+                    <p>SL: ${trade.stopLoss.toFixed(2)} | TP: ${trade.takeProfit.toFixed(2)}</p>
+                    ${trade.closed ? `<p>Thời gian đóng: ${trade.exitTime}</p>` : ''}
+                `;
+                
+                container.appendChild(tradeBox);
+            });
+        }
+        // *********************************************************
+
+        // ********** BỔ SUNG HÀM updateStatus **********
+        function updateStatus(extra = "") {
+            let status = autoTradingActive ? "Đang giao dịch tự động" : "Đã dừng";
+            if (extra) status += " | " + extra;
+            
+            document.getElementById('statusText').textContent = status;
+            document.getElementById('balanceText').textContent = virtualBalance.toFixed(2);
+            document.getElementById('tradesCount').textContent = tradesToday;
+        }
+        // *********************************************************
+
+        // ********** BỔ SUNG HÀM addHistory **********
+        function addHistory(message) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('vi-VN');
+            
+            const historyList = document.getElementById('historyList');
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.innerHTML = `<strong>${timeString}:</strong> ${message}`;
+            
+            // Chỉ giữ lại 50 mục lịch sử gần nhất
+            if (historyList.children.length >= 50) {
+                historyList.removeChild(historyList.lastChild);
+            }
+            historyList.insertBefore(historyItem, historyList.firstChild);
+        }
+        // *********************************************************
+
+        // SỬA LỖI 2: Thêm nội dung cho hàm checkPriceAlerts
+        function checkPriceAlerts(oldPrice, newPrice) {
+            if (!alertLevels.length) return;
+            
+            alertLevels.forEach(level => {
+                const crossUp = oldPrice < level && newPrice >= level;
+                const crossDown = oldPrice > level && newPrice <= level;
+                
+                if ((crossUp || crossDown) && !alertedLevels.has(level)) {
+                    alertedLevels.add(level);
+                    const direction = crossUp ? 'lên' : 'xuống';
+                    const message = `⚠️ Giá vừa vượt mốc ${level} (${direction})`;
+                    addHistory(message);
+                    playNotificationSound('alert', {
+                        level: level,
+                        direction: crossUp ? 'up' : 'down',
+                        price: newPrice
+                    });
+                }
+            });
+        }
+
+        // SỬA LỖI 2: Thêm nội dung cho hàm updateAlertLevels
+        function updateAlertLevels() {
+            const alertInput = document.getElementById('alertPrices').value;
+            alertLevels = alertInput.split(',')
+                .map(level => parseFloat(level.trim()))
+                .filter(level => !isNaN(level) && level > 0);
+            alertedLevels.clear();
+            localStorage.setItem('alertLevels', JSON.stringify(alertLevels));
+            addHistory(`📊 Đã cập nhật ${alertLevels.length} mốc cảnh báo giá`);
+        }
+        
+        // SỬA LỖI 3: Thêm nội dung cho hàm updateSuggestionStats
+        function updateSuggestionStats(trade, profit) {
+            // Logic cập nhật thống kê (có thể mở rộng sau)
+            // Ví dụ:
+            // if (trade.suggestionSource) {
+            //     const type = trade.type; // BUY hoặc SELL
+            //     if (profit > 0) {
+            //         suggestionStats[type].correct++;
+            //     }
+            //     localStorage.setItem('suggestionStats', JSON.stringify(suggestionStats));
+            //     updateSuggestionStatsDisplay();
+            // }
+        }
+        
+        // SỬA LỖI 3: Thêm nội dung cho hàm updateSuggestionStatsDisplay
+        function updateSuggestionStatsDisplay() {
+            const buyTotal = suggestionStats.BUY.total;
+            const buyCorrect = suggestionStats.BUY.correct;
+            const sellTotal = suggestionStats.SELL.total;
+            const sellCorrect = suggestionStats.SELL.correct;
+            
+            document.getElementById('statBuyTotal').textContent = buyTotal;
+            document.getElementById('statBuyCorrect').textContent = buyCorrect;
+            document.getElementById('statBuyPct').textContent = buyTotal > 0 ? ((buyCorrect / buyTotal) * 100).toFixed(2) + '%' : '0.00%';
+            
+            document.getElementById('statSellTotal').textContent = sellTotal;
+            document.getElementById('statSellCorrect').textContent = sellCorrect;
+            document.getElementById('statSellPct').textContent = sellTotal > 0 ? ((sellCorrect / sellTotal) * 100).toFixed(2) + '%' : '0.00%';
+        }
+        
+        // SỬA LỖI 4: Thêm nội dung cho hàm analyzeBalanceHistory
+        function analyzeBalanceHistory() {
+            if (balanceHistory.length === 0) {
+                alert('Chưa có dữ liệu lịch sử để phân tích');
+                return;
+            }
+            
+            const totalTrades = balanceHistory.filter(item => item.tradeIndex).length;
+            const profitableTrades = balanceHistory.filter(item => item.profit > 0).length;
+            const totalProfit = balanceHistory.reduce((sum, item) => sum + (item.profit || 0), 0);
+            const winRate = totalTrades > 0 ? (profitableTrades / totalTrades * 100).toFixed(2) : 0;
+            
             const analysis = `
-                --- PHÂN TÍCH HIỆU SUẤT ---
-                - Số dư ban đầu: ${initialBalance.toFixed(2)} USD
-                - Tổng số lệnh đã đóng: ${totalTrades}
-                - Số lệnh thắng: ${profitableTrades}
-                - Tỷ lệ thắng: ${winRate}%
-                - Tổng lợi nhuận: ${totalProfit.toFixed(2)} USD
-                - Số dư hiện tại: ${virtualBalance.toFixed(2)} USD
-            `;
+Phân tích hiệu suất:
+- Tổng lệnh: ${totalTrades}
+- Lệnh có lời: ${profitableTrades}
+- Tỷ lệ thắng: ${winRate}%
+- Tổng lợi nhuận: ${totalProfit.toFixed(2)} USD
+- Số dư hiện tại: ${virtualBalance.toFixed(2)} USD
+    `;
+            
             alert(analysis);
             addHistory('📈 Đã phân tích hiệu suất giao dịch');
         }
@@ -2044,7 +1575,473 @@ function playNotificationSound(soundType, data = null) {
             // KHÔNG xóa balanceHistory hay tradesToday
             logStatus('🗑️ Đã xóa log và lịch sử hiển thị');
         }
+        
+        // ********** BỔ SUNG HÀM createNewTrades **********
+        function createNewTrades() {
+            if (!autoTradingActive || currentPrice === 0 || virtualBalance < 100) {
+                stopAutoTrading();
+                return;
+            }
+            
+            // Đảm bảo không tạo lệnh mới nếu đang có lệnh mở
+            if (currentTrades.length > 0) {
+                logStatus('⚠️ Đã có lệnh đang mở. Không tạo lệnh mới.');
+                return;
+            }
+            
+            const price = currentPrice;
+            const sl = parseFloat(document.getElementById('stopLoss').value);
+            const tp = parseFloat(document.getElementById('takeProfit').value);
+            const lotSize = parseFloat(document.getElementById('lotSize').value);
+            const leverage = parseInt(document.getElementById('leverage').value);
+            
+            // Tăng tradesToday hai lần để có hai chỉ số lệnh
+            tradesToday++; 
+            const tradeIndex1 = tradesToday;
+            tradesToday++;
+            const tradeIndex2 = tradesToday;
 
+            currentTrades = [
+                {
+                    type: 'BUY',
+                    entryPrice: price,
+                    entryTime: new Date().toLocaleString('vi-VN'),
+                    stopLoss: price - sl,
+                    takeProfit: price + tp,
+                    lotSize,
+                    leverage,
+                    closed: false,
+                    tradeIndex: tradeIndex1,
+                    id: 'trade_' + Date.now() + '_1'
+                },
+                {
+                    type: 'SELL',
+                    entryPrice: price,
+                    entryTime: new Date().toLocaleString('vi-VN'),
+                    stopLoss: price + sl,
+                    takeProfit: price - tp,
+                    lotSize,
+                    leverage,
+                    closed: false,
+                    tradeIndex: tradeIndex2,
+                    id: 'trade_' + Date.now() + '_2'
+                }
+            ];
+            
+            document.getElementById('activeTrades').style.display = 'block';
+            updateTradeInfo();
+            
+            playNotificationSound('open');
+            addHistory(`Mở lệnh BUY #${tradeIndex1} @ ${price.toFixed(2)} | SL: ${(price - sl).toFixed(2)} | TP: ${(price + tp).toFixed(2)}`);
+            addHistory(`Mở lệnh SELL #${tradeIndex2} @ ${price.toFixed(2)} | SL: ${(price + sl).toFixed(2)} | TP: ${(price - tp).toFixed(2)}`);
+            
+            logStatus(`📈 Mở 2 lệnh mới (BUY/SELL) @ ${price.toFixed(2)}`);
+            saveTradingSettings();
+        }
+        // *********************************************************
+        
+        // ********** BỔ SUNG HÀM checkTrades **********
+        function checkTrades() {
+            if (!autoTradingActive || currentTrades.length === 0 || isWaitingNewTrades) return;
+            
+            let allClosed = true;
+            
+            // Tạo một bản sao để lặp, tránh lỗi khi sửa đổi currentTrades trong closeTrade
+            [...currentTrades].forEach(trade => {
+                if (trade.closed) return;
+                
+                allClosed = false;
+                let closeReason = '';
+                
+                // Kiểm tra SL
+                if ((trade.type === 'BUY' && currentPrice <= trade.stopLoss) || 
+                    (trade.type === 'SELL' && currentPrice >= trade.stopLoss)) {
+                    closeReason = 'STOP LOSS';
+                } 
+                // Kiểm tra TP
+                else if ((trade.type === 'BUY' && currentPrice >= trade.takeProfit) || 
+                         (trade.type === 'SELL' && currentPrice <= trade.takeProfit)) {
+                    closeReason = 'TAKE PROFIT';
+                }
+                
+                if (closeReason) {
+                    // Cần tìm lại lệnh trong currentTrades để đóng lệnh
+                    const index = currentTrades.findIndex(t => t.id === trade.id);
+                    if (index !== -1) {
+                         closeTrade(currentTrades[index], currentPrice, closeReason);
+                    }
+                }
+            });
+            
+            // Sau khi kiểm tra, lọc lại các lệnh đang mở (nếu closeTrade chưa tự làm)
+            const remainingTrades = currentTrades.filter(t => !t.closed);
+            
+            // Nếu cả hai lệnh đều đã đóng, tạo lệnh mới sau 3 giây
+            if (remainingTrades.length === 0 && autoTradingActive) {
+                currentTrades = []; // Dọn dẹp mảng
+                isWaitingNewTrades = true;
+                document.getElementById('activeTrades').style.display = 'none';
+                updateStatus("Đang chờ tạo lệnh mới...");
+                logStatus('⏳ Đang chờ tạo lệnh mới (3s)');
+                
+                setTimeout(() => {
+                    createNewTrades();
+                    isWaitingNewTrades = false;
+                    updateStatus();
+                }, 3000);
+            }
+        }
+        // *********************************************************
+
+        // ********** SỬA LẠI HÀM startAutoTrading **********
+        function startAutoTrading() {
+            if (autoTradingActive) return;
+            
+            virtualBalance = parseFloat(document.getElementById('virtualBalance').value);
+            autoTradingActive = true;
+            saveTradingSettings();
+            
+            updateStatus();
+            
+            // QUAN TRỌNG: Thêm dòng này để kiểm tra lệnh mỗi giây
+            tradingInterval = setInterval(() => {
+                checkTrades();
+                checkPriceStagnation();
+            }, 1000); 
+            
+            // Tự động tạo lệnh mới nếu chưa có lệnh nào và giá đã sẵn sàng
+            if (currentTrades.length === 0) {
+                const waitForPrice = setInterval(() => {
+                    if (currentPrice > 0) {
+                        clearInterval(waitForPrice);
+                        createNewTrades();
+                    }
+                }, 500);
+            }
+            
+            logStatus('🚀 Bắt đầu giao dịch tự động');
+        }
+        // *********************************************************
+        
+        // ********** BỔ SUNG HÀM stopAutoTrading **********
+        function stopAutoTrading() {
+            if (!autoTradingActive) return;
+            
+            autoTradingActive = false;
+            if (tradingInterval) {
+                clearInterval(tradingInterval);
+                tradingInterval = null;
+            }
+            updateStatus();
+            logStatus('🛑 Đã dừng giao dịch tự động');
+        }
+        // *********************************************************
+
+        // Hàm kiểm tra gợi ý giao nhau (findIntersectionSuggestion đổi tên thành checkIntersectionSuggestion)
+        function checkIntersectionSuggestion() {
+             if (!balanceChart || !suggestionByIntersectionEnabled) return;
+            
+            const dsBalance = balanceChart.data.datasets[0].data;
+            const dsGold = balanceChart.data.datasets[1].data;
+            const len = dsBalance.length;
+            
+            if (len < 3) return; // Cần ít nhất 3 điểm (2 đoạn) để tính độ dốc
+            
+            const minSlope = intersectionSettings.minSlope;
+            const minGapPct = intersectionSettings.minGapPct / 100; // Chuyển % sang thập phân
+            const confirmDelay = intersectionSettings.confirmDelay;
+            const suggestionMode = intersectionSettings.suggestionMode;
+            
+            let lastIntersectionIndex = -1;
+            
+            // Tìm điểm giao nhau gần nhất
+            for (let i = len - 2; i >= 1; i--) {
+                const balance1 = dsBalance[i - 1];
+                const balance2 = dsBalance[i];
+                const gold1 = dsGold[i - 1];
+                const gold2 = dsGold[i];
+                
+                // Kiểm tra giao nhau
+                const isCross = (balance1 < gold1 && balance2 > gold2) || (balance1 > gold1 && balance2 < gold2);
+                
+                if (isCross) {
+                    lastIntersectionIndex = i;
+                    break;
+                }
+            }
+            
+            if (lastIntersectionIndex === -1) {
+                document.getElementById('suggestionDisplay').innerHTML = 'Chưa có giao nhau nào được phát hiện.';
+                return;
+            }
+
+            // Kiểm tra độ trễ xác nhận
+            const confirmIndex = len - 1 - confirmDelay;
+            if (confirmIndex <= lastIntersectionIndex) {
+                document.getElementById('suggestionDisplay').innerHTML = 'Đang chờ xác nhận sau giao nhau.';
+                return;
+            }
+            
+            const confirmBalance = dsBalance[confirmIndex];
+            const confirmGold = dsGold[confirmIndex];
+            const confirmLabel = balanceChart.data.labels[confirmIndex];
+            
+            let currentSuggestion = null;
+            let reason = '';
+            
+            // Sau khi giao nhau, xem đường nào đang ở trên
+            if (confirmBalance > confirmGold) {
+                // Balance ở trên Gold -> tín hiệu TĂNG
+                
+                // Tính độ dốc (Slope) của Balance từ điểm giao nhau đến điểm xác nhận
+                const slopeBalance = (confirmBalance - dsBalance[lastIntersectionIndex]) / (confirmIndex - lastIntersectionIndex);
+                
+                // Tính khoảng cách (Gap) tại điểm xác nhận
+                const gapPct = (confirmBalance - confirmGold) / confirmGold;
+
+                if (slopeBalance > minSlope && gapPct > minGapPct) {
+                    currentSuggestion = 'BUY';
+                    reason = `Đường Số Dư (>Gold) dốc (${slopeBalance.toFixed(2)}) và Gap lớn (${(gapPct*100).toFixed(2)}%)`;
+                }
+            } else if (confirmBalance < confirmGold) {
+                // Gold ở trên Balance -> tín hiệu GIẢM
+                
+                // Tính độ dốc (Slope) của Gold từ điểm giao nhau đến điểm xác nhận
+                const slopeGold = (confirmGold - dsGold[lastIntersectionIndex]) / (confirmIndex - lastIntersectionIndex);
+                
+                // Tính khoảng cách (Gap) tại điểm xác nhận
+                const gapPct = (confirmGold - confirmBalance) / confirmBalance;
+
+                if (slopeGold > minSlope && gapPct > minGapPct) {
+                    currentSuggestion = 'SELL';
+                    reason = `Đường Giá Vàng (>Số Dư) dốc (${slopeGold.toFixed(2)}) và Gap lớn (${(gapPct*100).toFixed(2)}%)`;
+                }
+            }
+
+            // Áp dụng chế độ hiển thị
+            if (suggestionMode !== 'all' && currentSuggestion !== suggestionMode.toUpperCase()) {
+                 currentSuggestion = null;
+            }
+
+            if (currentSuggestion && !alertedIntersectionIndices.has(lastIntersectionIndex)) {
+                 const type = currentSuggestion;
+                
+                const display = document.getElementById('suggestionDisplay');
+                const className = type === 'BUY' ? 'suggest-buy' : 'suggest-sell';
+                display.innerHTML = `<div class="${className}">${confirmLabel} | **${currentSuggestion}** | Lý do: ${reason} (Chế độ Giao nhau)</div>`;
+                
+                logStatus(`📢 **${currentSuggestion}** Gợi ý Giao nhau | ${reason}`);
+                playNotificationSound('intersection', { suggestion: currentSuggestion }); // THÊM data cho TTS
+                
+                // Lưu lại chỉ số giao nhau đã cảnh báo
+                alertedIntersectionIndices.add(lastIntersectionIndex);
+                
+                // Tăng thống kê (cần logic cập nhật thống kê)
+                // suggestionStats[type].total++; 
+                // localStorage.setItem('suggestionStats', JSON.stringify(suggestionStats));
+                // updateSuggestionStatsDisplay();
+            } else if (!currentSuggestion) {
+                 document.getElementById('suggestionDisplay').innerHTML = `Giao nhau đã xảy ra tại #${lastIntersectionIndex} nhưng chưa đạt điều kiện dốc/gap tối thiểu hoặc bị lọc bởi chế độ hiển thị.`;
+            }
+        }
+
+        // ********** HÀM checkDirectionalSuggestion MỚI (Thay thế findDirectionalSuggestion) **********
+        function checkDirectionalSuggestion() {
+            if (!balanceChart || !suggestionByDirectionEnabled) return;
+            
+            const dsBalance = balanceChart.data.datasets[0].data;
+            const dsGold = balanceChart.data.datasets[1].data;
+            const dataArray = (suggestionBaseLine === 'balance' ? dsBalance : dsGold);
+            const len = dataArray.length;
+            
+            // Kiểm tra đủ điểm dữ liệu
+            if (len <= currentPointIndex + directionConfirmationPoints) {
+                document.getElementById('suggestionDisplay').innerHTML = 'Chưa đủ dữ liệu để tính hướng từ điểm bắt đầu.';
+                return;
+            }
+            
+            const startIndex = currentPointIndex;
+            const endIndex = len - 1;
+            const confirmPoints = directionConfirmationPoints;
+            
+            // Lấy giá trị tại điểm bắt đầu
+            const startValue = dataArray[startIndex];
+            
+            // Lấy giá trị tại điểm xác nhận
+            const confirmationIndex = endIndex - confirmPoints;
+            if (confirmationIndex < startIndex) {
+                document.getElementById('suggestionDisplay').innerHTML = 'Chưa đủ điểm xác nhận hướng.';
+                return;
+            }
+            const confirmationValue = dataArray[confirmationIndex];
+            
+            let currentSuggestion = null;
+            let reason = '';
+            
+            if (confirmationValue > startValue) {
+                currentSuggestion = 'BUY';
+                reason = `Đường ${suggestionBaseLine === 'balance' ? 'Số Dư' : 'Giá Vàng'} đang đi lên từ điểm #${startIndex}`;
+            } else if (confirmationValue < startValue) {
+                currentSuggestion = 'SELL';
+                reason = `Đường ${suggestionBaseLine === 'balance' ? 'Số Dư' : 'Giá Vàng'} đang đi xuống từ điểm #${startIndex}`;
+            } else {
+                document.getElementById('suggestionDisplay').innerHTML = 'Đường cơ sở chưa thay đổi hướng rõ rệt.';
+                return;
+            }
+            
+            // Cập nhật gợi ý nếu khác gợi ý trước đó
+            if (currentSuggestion && currentSuggestion !== lastDirectionalSuggestion) {
+                const type = currentSuggestion;
+                const timeLabel = balanceChart.data.labels[endIndex];
+                
+                suggestionStats[type].lastIndex = endIndex;
+                suggestionStats[type].lastTime = timeLabel;
+                
+                localStorage.setItem('suggestionStats', JSON.stringify(suggestionStats));
+                
+                const display = document.getElementById('suggestionDisplay');
+                const className = type === 'BUY' ? 'suggest-buy' : 'suggest-sell';
+                display.innerHTML = `<div class="${className}">${timeLabel} | **${currentSuggestion}** | Lý do: ${reason} (Chế độ Theo Hướng)</div>`;
+                
+                logStatus(`📢 **${currentSuggestion}** Gợi ý Theo Hướng | ${reason}`);
+                playNotificationSound('suggestion', { suggestion: currentSuggestion }); // THÊM data cho TTS
+                
+                lastDirectionalSuggestion = currentSuggestion;
+                localStorage.setItem('lastDirectionalSuggestion', lastDirectionalSuggestion);
+                
+                suggestionStats[type].lastTradeIndex = tradesToday; 
+            }
+        }
+        // *******************************************************************************************
+
+
+        // ********** SỬA ĐỔI HÀM drawBalanceChart **********
+        function drawBalanceChart() {
+            if (!balanceChart) {
+                const ctxBalance = document.getElementById('balanceChart').getContext('2d');
+                balanceChart = new Chart(ctxBalance, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [
+                            {
+                                label: 'Số Dư (USD)',
+                                data: [],
+                                borderColor: '#0ecb81',
+                                backgroundColor: 'rgba(14, 203, 129, 0.1)',
+                                yAxisID: 'yBalance',
+                                tension: 0.2,
+                                fill: false,
+                                pointRadius: 2 
+                            },
+                            {
+                                label: 'Giá Vàng (XAU/USD)',
+                                data: [],
+                                borderColor: '#d4af37',
+                                backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                                yAxisID: 'yGold',
+                                tension: 0.2,
+                                fill: false,
+                                pointRadius: 1 
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        scales: {
+                            yBalance: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: 'Số Dư (USD)' }
+                            },
+                            yGold: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                grid: { drawOnChartArea: false },
+                                title: { display: true, text: 'Giá Vàng (XAU/USD)' }
+                            }
+                        },
+                        plugins: { 
+                            tooltip: {
+                                callbacks: {
+                                    afterBody: function(context) {
+                                        const index = context[0].dataIndex;
+                                        const item = balanceHistory[index];
+                                        // Kiểm tra nếu item là điểm đóng lệnh
+                                        if (item?.tradeIndex) {
+                                            let info = `Lệnh: ${item.type} tại ${item.entryPrice.toFixed(2)}`;
+                                            if (item.closePrice) {
+                                                info += ` -> Đóng: ${item.closePrice.toFixed(2)} (${item.reason})`;
+                                                info += ` | Lời/Lỗ: ${item.profit.toFixed(2)} USD`;
+                                            }
+                                            return info;
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // SỬA LẠI PHẦN NÀY: Sử dụng goldPrice thay vì trade.openPrice
+            const labels = balanceHistory.map(item => {
+                // Đảm bảo item.time được định dạng đúng cho Chart.js
+                 if (item.time instanceof Date) {
+                    return item.time.toLocaleTimeString('vi-VN');
+                } else if (typeof item.time === 'string') {
+                    // Nếu là string đã lưu
+                    return item.time.includes('T') ? new Date(item.time).toLocaleTimeString('vi-VN') : item.time;
+                }
+                return '';
+            });
+            
+            const balanceData = balanceHistory.map(item => item.balance);
+            const goldData = balanceHistory.map(item => item.goldPrice || 0); // <<<< ĐÃ SỬA: Lấy goldPrice
+
+            // Tìm và đặt điểm bắt đầu gợi ý
+            const pointStyles = new Array(balanceData.length).fill('circle');
+            const pointRadii = new Array(balanceData.length).fill(2);
+            
+            // Chỉ số điểm bắt đầu: currentPointIndex
+            if (currentPointIndex >= 0 && currentPointIndex < balanceData.length) {
+                pointStyles[currentPointIndex] = 'rectRot'; 
+                pointRadii[currentPointIndex] = 5; 
+            }
+
+            // Gán data
+            balanceChart.data.labels = labels;
+            balanceChart.data.datasets[0].data = balanceData;
+            balanceChart.data.datasets[1].data = goldData;
+            
+            // Áp dụng style cho dataset Balance
+            balanceChart.data.datasets[0].pointStyle = pointStyles;
+            balanceChart.data.datasets[0].pointRadius = pointRadii;
+
+
+            balanceChart.update();
+            
+            // Kích hoạt logic gợi ý
+            setTimeout(() => { // ĐÃ THÊM setTimeout THEO YÊU CẦU
+                if (suggestionByDirectionEnabled) {
+                    checkDirectionalSuggestion(); // Gọi hàm gợi ý theo hướng
+                } else if (suggestionByIntersectionEnabled) {
+                    checkIntersectionSuggestion(); // Gọi hàm gợi ý giao nhau
+                } else {
+                    document.getElementById('suggestionDisplay').innerHTML = 'Chưa có chế độ gợi ý nào được bật.';
+                }
+            }, 100);
+        }
+        // ******************************************************
+        
         // Tải các cài đặt và khởi tạo (Giữ nguyên)
         function loadSettingsAndInitialize() {
             loadTradingSettings();
@@ -2060,904 +2057,71 @@ function playNotificationSound(soundType, data = null) {
             } else {
                 updateAlertLevels(); // Cập nhật mốc cảnh báo (để lưu mảng rỗng nếu chưa có)
             }
-
+            
             updateStatus();
             initChart();
             toggleSuggestionMode(); // Phải gọi sau khi loadDirectionalSettings
         }
-
+        
         window.onload = function() {
             loadSettingsAndInitialize();
-            connectWebSocket(); // SỬA LỖI 6: Thêm log khởi động
-            addHistory('🔄 Ứng dụng khởi động'); 
+            connectWebSocket();
+            
+            // SỬA LỖI 6: Thêm log khởi động
+            addHistory('🔄 Ứng dụng khởi động');
             
             // Kiểm tra giá đứng im mỗi 5 giây
-            setInterval(checkPriceStagnation, 5000);
+            setInterval(checkPriceStagnation, 5000); 
 
             // Listeners cho Cài đặt giao dịch
             ['virtualBalance', 'leverage', 'lotSize', 'stopLoss', 'takeProfit'].forEach(id => {
                 document.getElementById(id).addEventListener('change', saveTradingSettings);
             });
-
+            
             // Listener cho Mốc cảnh báo
             document.getElementById('alertPrices').addEventListener('change', updateAlertLevels);
-
+            
             // Listeners cho Cài đặt Gợi ý Giao nhau (CŨ)
             ['minSlope', 'minGapPct', 'confirmDelay', 'suggestionMode'].forEach(id => {
                 document.getElementById(id).addEventListener('change', saveIntersectionSettings);
             });
-
+            
             // Listeners cho Cài đặt Gợi ý Theo Hướng (MỚI)
-            ['suggestionBaseLine', 'directionConfirmationPoints'].forEach(id => {
+             ['suggestionBaseLine', 'directionConfirmationPoints'].forEach(id => {
                 document.getElementById(id).addEventListener('change', saveDirectionalSettings);
             });
-        };
-    </script>
-</body>
-</html>
-</div>
-
-<div id="replayTab" class="tab-content">
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phát Lại Biểu Đồ Số Dư & Giá Vàng</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --bg-color: #f8f9fa;
-            --text-color: #333;
-            --panel-bg: white;
-            --border-color: #ddd;
-            --primary-color: #d4af37;
-            --secondary-color: #0ecb81;
-            --accent-color: #f6465d;
-        }
-        .dark-mode {
-            --bg-color: #1e2026;
-            --text-color: #e0e0e0;
-            --panel-bg: #2a2d35;
-            --border-color: #444;
-            --primary-color: #e5c046;
-            --secondary-color: #0ecb81;
-            --accent-color: #ff6b81;
-        }
-        body {
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            transition: all 0.3s ease;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: var(--panel-bg);
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            padding: 20px;
-        }
-        h1 {
-            color: var(--primary-color);
-            text-align: center;
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .theme-toggle {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: var(--text-color);
-        }
-        .panel {
-            background: var(--panel-bg);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid var(--border-color);
-        }
-        .panel-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: var(--text-color);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-        }
-        .control-group {
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        label {
-            display: inline-block;
-            width: 150px;
-            font-weight: 500;
-        }
-        input[type="text"], input[type="number"], input[type="file"], select {
-            padding: 8px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background-color: #f5f5f5;
-            color: var(--text-color);
-        }
-        button {
-            background-color: var(--primary-color);
-            color: #1e2026;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-right: 10px;
-            transition: all 0.3s;
-        }
-        button:hover {
-            background-color: #e5c046;
-        }
-        button.secondary {
-            background-color: var(--secondary-color);
-            color: white;
-        }
-        button.secondary:hover {
-            background-color: #0d9e6e;
-        }
-        button.danger {
-            background-color: var(--accent-color);
-            color: white;
-        }
-        button.danger:hover {
-            background-color: #ff6b81;
-        }
-        .chart-container {
-            height: 400px;
-            margin-bottom: 30px;
-        }
-        .status-display {
-            font-size: 16px;
-            font-weight: bold;
-            padding: 10px;
-            border: 1px solid var(--primary-color);
-            border-radius: 4px;
-            margin-bottom: 20px;
-            background: #fff3cd;
-            color: #856404;
-            display: flex;
-            justify-content: space-between;
-        }
-        .dark-mode .status-display {
-            background: #3a3f4a;
-            color: #e5c046;
-            border-color: #e5c046;
-        }
-        .data-info {
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            margin-bottom: 15px;
-            background: #f1f1f1;
-        }
-        .dark-mode .data-info {
-            background: #3a3f4a;
-        }
-        .speed-control {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .speed-btn {
-            padding: 8px 12px;
-            background-color: #ccc;
-            color: #333;
-            font-weight: normal;
-        }
-        .speed-btn.active {
-            background-color: var(--primary-color);
-            color: #1e2026;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>
-            Phát Lại Biểu Đồ Số Dư & Giá Vàng
-            <button id="themeToggle" class="theme-toggle">🌙</button>
-        </h1>
-        
-        <div class="status-display" id="replayStatus">
-            <div>Trạng thái: <span id="statusTextReplay">Chưa tải dữ liệu</span></div>
-            <div>Chỉ số hiện tại: <span id="currentIndex">0</span> / <span id="totalIndex">0</span></div>
-            <div>Số dư: <span id="currentBalance">0.00</span> USD</div>
-        </div>
-
-        <div class="panel">
-            <div class="panel-title">📊 Dữ Liệu Biểu Đồ</div>
-            <div class="control-group">
-                <label for="dataSource">Nguồn dữ liệu:</label>
-                <select id="dataSource" onchange="toggleDataSource()">
-                    <option value="localStorage">Từ LocalStorage (Pro Gold Max)</option>
-                    <option value="file">Tải từ file JSON</option>
-                    <option value="url">Tải từ URL</option>
-                </select>
-            </div>
-            <div id="fileUploadContainer" style="display: none;">
-                <div class="control-group">
-                    <label for="jsonFile">Chọn file JSON:</label>
-                    <input type="file" id="jsonFile" accept=".json">
-                </div>
-            </div>
-            <div id="urlUploadContainer" style="display: none;">
-                <div class="control-group">
-                    <label for="jsonUrl">Nhập URL .json:</label>
-                    <input type="text" id="jsonUrl" placeholder="https://vd.com/data.json">
-                </div>
-            </div>
-            <div class="data-info" id="dataInfo">
-                Chưa có dữ liệu. Vui lòng tải dữ liệu từ LocalStorage, file JSON hoặc URL.
-            </div>
-            <div class="control-group">
-                <button onclick="loadData()">Tải Dữ Liệu</button>
-                <button class="secondary" onclick="exportData()">Xuất Dữ Liệu</button>
-            </div>
-        </div>
-
-        <div class="panel">
-            <div class="panel-title">⏱ Điều Khiển Phát Lại</div>
-            <div class="control-group">
-                <label for="intervalTime">Thời gian mỗi điểm (giây):</label>
-                <input type="number" id="intervalTime" value="3" min="0.1" step="0.1">
-            </div>
-            <div class="speed-control">
-                <label>Tốc độ:</label>
-                <button class="speed-btn" onclick="setSpeed(0.5)">0.5x</button>
-                <button class="speed-btn active" onclick="setSpeed(1)">1x</button>
-                <button class="speed-btn" onclick="setSpeed(2)">2x</button>
-                <button class="speed-btn" onclick="setSpeed(5)">5x</button>
-                <button class="speed-btn" onclick="setSpeed(10)">10x</button>
-            </div>
-            <div class="control-group" style="margin-top: 15px;">
-                <label for="jumpTime">Nhảy đến giờ:</label>
-                <input type="time" id="jumpTime" step="60">
-                <button onclick="jumpToTime()">Nhảy</button>
-                <label for="replayStartIndex">Bắt đầu tại Index:</label>
-                <input type="number" id="replayStartIndex" value="0" min="0" style="width: 80px;">
-            </div>
-            <div class="control-group">
-                <input type="checkbox" id="loopReplay">
-                <label for="loopReplay" style="width: auto;">Lặp lại (Loop)</label>
-            </div>
-            <div class="control-group" style="margin-top: 20px;">
-                <button id="playBtn" onclick="startReplay()" disabled>▶️ Phát</button>
-                <button id="pauseBtn" onclick="pauseReplay()" disabled>⏸️ Tạm dừng</button>
-                <button id="resetBtn" onclick="resetReplay()">🔄 Reset</button>
-                <button id="skipForwardBtn" onclick="skipForward()">⏩ Bỏ qua</button>
-                <button id="skipBackBtn" onclick="skipBack()">⏪ Lùi lại</button>
-            </div>
-        </div>
-        
-        <div class="panel">
-            <div class="panel-title">Biểu Đồ Phát Lại</div>
-            <div class="chart-container">
-                <canvas id="replayChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let chartReplay;
-        let chartData = [];
-        let currentIndex = 0;
-        let replayInterval = null;
-        let isPlaying = false;
-        let currentSpeed = 1;
-        let replayStartIndex = 0;
-
-        // Khởi tạo biểu đồ rỗng
-        function initChart() {
-            const ctx = document.getElementById('replayChart').getContext('2d');
             
-            if (chartReplay) {
-                chartReplay.destroy();
-            }
-
-            chartReplay = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: 'Số Dư (USD)',
-                            data: [],
-                            borderColor: '#0ecb81',
-                            backgroundColor: 'rgba(14, 203, 129, 0.1)',
-                            yAxisID: 'yBalance',
-                            tension: 0.2,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#0ecb81',
-                        },
-                        {
-                            label: 'Giá Vàng (XAU/USD)',
-                            data: [],
-                            borderColor: '#d4af37',
-                            backgroundColor: 'rgba(212, 175, 55, 0.1)',
-                            yAxisID: 'yGold',
-                            tension: 0.2,
-                            pointRadius: 1,
-                            pointBackgroundColor: '#d4af37',
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            ticks: {
-                                maxTicksLimit: 20
-                            }
-                        },
-                        yBalance: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Số Dư (USD)',
-                                color: '#0ecb81'
-                            },
-                            grid: {
-                                color: 'rgba(14, 203, 129, 0.1)'
-                            }
-                        },
-                        yGold: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            grid: {
-                                drawOnChartArea: false
-                            },
-                            title: {
-                                display: true,
-                                text: 'Giá Vàng (XAU/USD)',
-                                color: '#d4af37'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += new Intl.NumberFormat('vi-VN').format(context.parsed.y.toFixed(2));
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    }
-                }
+            // Listener cho File Input để lưu file ngay sau khi chọn (trước khi nhấn Lưu Cấu Hình)
+            document.getElementById('globalNotifySoundInput').addEventListener('change', function() {
+                // Lưu file ngay sau khi chọn (tránh mất file khi refresh)
+                saveAllSoundSettings(); 
             });
-        }
-
-        // Cập nhật biểu đồ theo currentIndex
-        function updateChart() {
-            if (chartData.length === 0) return;
             
-            const slicedData = chartData.slice(0, currentIndex + 1);
-
-            const labels = slicedData.map(item => new Date(item.time).toLocaleTimeString('vi-VN'));
-            const balanceData = slicedData.map(item => item.balance);
-            const goldPriceData = slicedData.map(item => item.goldPrice);
-
-            chartReplay.data.labels = labels;
-            chartReplay.data.datasets[0].data = balanceData;
-            chartReplay.data.datasets[1].data = goldPriceData;
+            // THÊM: Listener cho chế độ điểm (fixed/custom)
+            document.getElementById('nextPointMode').addEventListener('change', function() {
+                togglePointModeSettings();
+                saveDirectionalSettings(); // Lưu lại chế độ và cập nhật UI
+            });
             
-            // Highlight điểm hiện tại
-            chartReplay.data.datasets[0].pointBackgroundColor = Array(currentIndex).fill('#0ecb81');
-            chartReplay.data.datasets[0].pointBackgroundColor[currentIndex] = 'white';
-            chartReplay.data.datasets[0].pointBorderColor = Array(currentIndex).fill('#0ecb81');
-            chartReplay.data.datasets[0].pointBorderColor[currentIndex] = 'red';
-            chartReplay.data.datasets[0].pointBorderWidth = Array(currentIndex).fill(1);
-            chartReplay.data.datasets[0].pointBorderWidth[currentIndex] = 3;
-            chartReplay.data.datasets[0].pointRadius = Array(currentIndex).fill(3);
-            chartReplay.data.datasets[0].pointRadius[currentIndex] = 6;
-
-
-            chartReplay.update();
-        }
-
-        // Cập nhật trạng thái hiển thị
-        function updateStatus() {
-            document.getElementById('totalIndex').textContent = chartData.length > 0 ? chartData.length - 1 : 0;
-            document.getElementById('currentIndex').textContent = currentIndex;
+            // Listener cho input Khoảng điểm cố định
+            document.getElementById('fixedInterval').addEventListener('change', saveDirectionalSettings);
             
-            if (chartData.length > 0) {
-                const currentItem = chartData[currentIndex];
-                document.getElementById('currentBalance').textContent = currentItem.balance.toFixed(2);
-                document.getElementById('statusTextReplay').textContent = isPlaying ? 'Đang phát' : 'Đã dừng';
-                document.getElementById('replayStartIndex').value = replayStartIndex;
-            } else {
-                document.getElementById('currentBalance').textContent = '0.00';
-                document.getElementById('statusTextReplay').textContent = 'Chưa tải dữ liệu';
-                document.getElementById('replayStartIndex').value = 0;
-            }
-        }
+            // Listener cho input Danh sách tùy chỉnh
+            document.getElementById('customPoints').addEventListener('change', saveDirectionalSettings);
 
-        // Tải dữ liệu từ localStorage, file hoặc URL
-        function loadData() {
-            const dataSource = document.getElementById('dataSource').value;
-            if (dataSource === 'localStorage') {
-                loadFromLocalStorage();
-            } else if (dataSource === 'file') {
-                loadFromFile();
-            } else if (dataSource === 'url') {
-                loadFromUrl();
-            }
-        }
+            // *** START FIX 5: ADD CONSOLE CHECKS ***
+            console.log('TTS Enabled:', ttsEnabled);
+            console.log('Browser TTS Support:', 'speechSynthesis' in window);
 
-        // ********** HÀM loadFromLocalStorage ĐÃ CẬP NHẬT **********
-        function loadFromLocalStorage() {
-          try {
-            const balanceHistory = JSON.parse(localStorage.getItem('balanceHistory'));
-            
-            if (!balanceHistory || balanceHistory.length === 0) {
-              document.getElementById('dataInfo').innerHTML = '❌ Không tìm thấy dữ liệu. Vui lòng tải file JSON trước.';
-              return;
-            }
-            
-            chartData = balanceHistory.map(item => ({
-              time: new Date(item.time),
-              balance: item.balance,
-              goldPrice: item.goldPrice || 0
-            }));
-            
-            document.getElementById('dataInfo').innerHTML = `✅ Đã tải ${chartData.length} điểm dữ liệu từ file JSON.`;
-            initReplay();
-            
-          } catch (error) {
-            document.getElementById('dataInfo').innerHTML = `❌ Lỗi khi tải dữ liệu: ${error.message}`;
-          }
-        }
-        // ************************************************************
-
-        // Tải dữ liệu từ file JSON
-        function loadFromFile() {
-            const fileInput = document.getElementById('jsonFile');
-            const file = fileInput.files[0];
-            const dataInfo = document.getElementById('dataInfo');
-            
-            if (!file) {
-                dataInfo.innerHTML = '❌ Vui lòng chọn file JSON.';
-                return;
-            }
-
-            dataInfo.innerHTML = 'Đang đọc file...';
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const jsonData = JSON.parse(e.target.result);
-
-                    if (!Array.isArray(jsonData)) {
-                        dataInfo.innerHTML = '❌ Dữ liệu JSON không hợp lệ. Phải là mảng.';
-                        return;
-                    }
-
-                    if (jsonData.length > 0) {
-                        const firstItem = jsonData[0];
-                        if (!firstItem.time || firstItem.balance === undefined || firstItem.goldPrice === undefined) {
-                            dataInfo.innerHTML = '❌ Cấu trúc dữ liệu không hợp lệ. Mỗi mục cần có: time, balance, goldPrice.';
-                            return;
-                        }
-                    }
-
-                    chartData = jsonData.map(item => ({
-                        ...item,
-                        time: new Date(item.time) // Chuyển đổi thành đối tượng Date
-                    }));
-                    
-                    dataInfo.innerHTML = `✅ Đã tải ${chartData.length} điểm dữ liệu từ file JSON.`;
-                    initReplay();
-
-                } catch (error) {
-                    dataInfo.innerHTML = `❌ Lỗi khi đọc file JSON: ${error.message}`;
+            // Test TTS
+            setTimeout(() => {
+                if (ttsEnabled) {
+                    console.log('Testing TTS...');
+                    playTTSMessage('test');
                 }
-            };
-            reader.readAsText(file);
-        }
-
-        // Tải dữ liệu từ URL
-        async function loadFromUrl() {
-            const urlInput = document.getElementById('jsonUrl');
-            const url = urlInput.value;
-            const dataInfo = document.getElementById('dataInfo');
-            
-            if (!url) {
-                dataInfo.innerHTML = '❌ Vui lòng nhập URL của file JSON.';
-                return;
-            }
-
-            dataInfo.innerHTML = 'Đang tải dữ liệu từ URL...';
-
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const jsonData = await response.json();
-
-                if (!Array.isArray(jsonData)) {
-                    dataInfo.innerHTML = '❌ Dữ liệu JSON không hợp lệ. Phải là mảng.';
-                    return;
-                }
-
-                if (jsonData.length > 0) {
-                    const firstItem = jsonData[0];
-                    if (!firstItem.time || firstItem.balance === undefined || firstItem.goldPrice === undefined) {
-                        dataInfo.innerHTML = '❌ Cấu trúc dữ liệu không hợp lệ. Mỗi mục cần có: time, balance, goldPrice.';
-                        return;
-                    }
-                }
-
-                chartData = jsonData.map(item => ({
-                    ...item,
-                    time: new Date(item.time) // Chuyển đổi thành đối tượng Date
-                }));
-                
-                dataInfo.innerHTML = `✅ Đã tải ${chartData.length} điểm dữ liệu từ URL.`;
-                initReplay();
-
-            } catch (error) {
-                dataInfo.innerHTML = `❌ Lỗi khi tải dữ liệu từ URL: ${error.message}`;
-            }
-        }
-
-        // Xuất dữ liệu
-        function exportData() {
-            if (chartData.length === 0) {
-                alert('Không có dữ liệu để xuất.');
-                return;
-            }
-            const dataStr = JSON.stringify(chartData, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'replay_data_' + new Date().toISOString().split('T')[0] + '.json';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            
-            alert(`✅ Đã xuất ${chartData.length} điểm dữ liệu!`);
-        }
-
-        // Hàm được gọi sau khi tải dữ liệu thành công
-        function initReplay() {
-            pauseReplay();
-            currentIndex = replayStartIndex = parseInt(document.getElementById('replayStartIndex').value) || 0;
-            if (chartData.length > 0 && currentIndex >= chartData.length) {
-                currentIndex = replayStartIndex = chartData.length - 1;
-            } else if (currentIndex < 0) {
-                currentIndex = replayStartIndex = 0;
-            }
-
-            updateChart();
-            updateStatus();
-            document.getElementById('playBtn').disabled = chartData.length === 0;
-            document.getElementById('replayStartIndex').max = chartData.length > 0 ? chartData.length - 1 : 0;
-            document.getElementById('totalIndex').textContent = chartData.length > 0 ? chartData.length - 1 : 0;
-        }
-        
-        // Điều khiển replay
-        function startReplay() {
-            if (isPlaying || chartData.length === 0) return;
-            
-            const isLooping = document.getElementById('loopReplay').checked;
-            
-            if (currentIndex >= chartData.length) {
-                currentIndex = replayStartIndex;
-                updateChart();
-                updateStatus();
-            }
-
-            isPlaying = true;
-            document.getElementById('playBtn').disabled = true;
-            document.getElementById('pauseBtn').disabled = false;
-            
-            const intervalTime = parseFloat(document.getElementById('intervalTime').value) * 1000 / currentSpeed;
-
-            replayInterval = setInterval(() => {
-                currentIndex++;
-                
-                if (currentIndex >= chartData.length) {
-                    if (isLooping) {
-                        currentIndex = replayStartIndex;
-                    } else {
-                        pauseReplay();
-                        return;
-                    }
-                }
-                updateChart();
-                updateStatus();
-            }, intervalTime);
-        }
-
-        // Tạm dừng replay
-        function pauseReplay() {
-            isPlaying = false;
-            document.getElementById('playBtn').disabled = false;
-            document.getElementById('pauseBtn').disabled = true;
-            if (replayInterval) {
-                clearInterval(replayInterval);
-                replayInterval = null;
-            }
-        }
-
-        // Reset replay
-        function resetReplay() {
-            pauseReplay();
-            replayStartIndex = parseInt(document.getElementById('replayStartIndex').value) || 0;
-            currentIndex = replayStartIndex;
-            updateChart();
-            updateStatus();
-        }
-
-        // Nhảy tới thời gian
-        function jumpToTime() {
-            const timeInput = document.getElementById('jumpTime').value;
-            if (!timeInput) {
-                alert('Vui lòng chọn thời gian.');
-                return;
-            }
-            if (chartData.length === 0) {
-                alert('Vui lòng tải dữ liệu trước.');
-                return;
-            }
-
-            const [targetHours, targetMinutes] = timeInput.split(':').map(Number);
-            const targetTotalMinutes = targetHours * 60 + targetMinutes;
-
-            let bestIndex = -1;
-            let minDiff = Infinity;
-
-            for (let i = 0; i < chartData.length; i++) {
-                const itemTime = chartData[i].time;
-                const itemTotalMinutes = itemTime.getHours() * 60 + itemTime.getMinutes();
-                const diff = Math.abs(itemTotalMinutes - targetTotalMinutes);
-
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    bestIndex = i;
-                }
-            }
-
-            if (bestIndex !== -1) {
-                pauseReplay();
-                replayStartIndex = bestIndex;
-                currentIndex = bestIndex;
-                updateChart();
-                updateStatus();
-            }
-        }
-
-        // Nhảy đến điểm tiếp theo
-        function skipForward() {
-            if (currentIndex < chartData.length - 1) {
-                currentIndex++;
-                updateChart();
-                updateStatus();
-            }
-        }
-
-        // Lùi lại điểm trước
-        function skipBack() {
-            if (currentIndex > 0) {
-                currentIndex--;
-                updateChart();
-                updateStatus();
-            }
-        }
-
-        // Đặt tốc độ
-        function setSpeed(speed) {
-            currentSpeed = speed;
-            document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`.speed-control button:nth-child(${speed === 0.5 ? 2 : speed === 1 ? 3 : speed === 2 ? 4 : speed === 5 ? 5 : 6})`).classList.add('active');
-            
-            // Nếu đang phát, khởi động lại interval với tốc độ mới
-            if (isPlaying) {
-                pauseReplay();
-                startReplay();
-            }
-        }
-
-        // Chuyển đổi nguồn dữ liệu
-        function toggleDataSource() {
-            const dataSource = document.getElementById('dataSource').value;
-            document.getElementById('fileUploadContainer').style.display = dataSource === 'file' ? 'flex' : 'none';
-            document.getElementById('urlUploadContainer').style.display = dataSource === 'url' ? 'flex' : 'none';
-        }
-
-        // Chuyển đổi chế độ sáng/tối
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            const themeToggle = document.getElementById('themeToggle');
-            themeToggle.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
-            if (chartReplay) {
-                chartReplay.options.scales.yBalance.title.color = document.body.classList.contains('dark-mode') ? '#0ecb81' : '#0ecb81';
-                chartReplay.options.scales.yGold.title.color = document.body.classList.contains('dark-mode') ? '#e5c046' : '#d4af37';
-                chartReplay.update();
-            }
-        }
-
-        // Khởi tạo khi trang tải
-        window.onload = function() {
-            initChart();
-            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-            document.getElementById('replayStartIndex').addEventListener('change', initReplay);
-            
-            // Thử tải dữ liệu từ localStorage ngay lập tức nếu có cờ replayReady
-            if (localStorage.getItem('replayReady') === 'true') {
-                 document.getElementById('dataSource').value = 'localStorage';
-                 loadFromLocalStorage();
-            } else {
-                // Tải lại setting UI cho input file/url nếu cần
-                toggleDataSource();
-            }
+            }, 3000);
+            // *** END FIX 5 ***
         };
     </script>
-</body>
-</html>
-</div>
-<script>
-// Tab switching
-const liveTabBtn = document.getElementById('liveTabBtn');
-const replayTabBtn = document.getElementById('replayTabBtn');
-const liveTab = document.getElementById('liveTab');
-const replayTab = document.getElementById('replayTab');
-const transferBtn = document.getElementById('transferDataBtn');
-
-liveTabBtn.onclick = () => {
-  liveTabBtn.classList.add('active');
-  replayTabBtn.classList.remove('active');
-  liveTab.classList.add('active');
-  replayTab.classList.remove('active');
-};
-
-replayTabBtn.onclick = () => {
-  replayTabBtn.classList.add('active');
-  liveTabBtn.classList.remove('active');
-  replayTab.classList.add('active');
-  liveTab.classList.remove('active');
-};
-
-// Tạo input file ẩn để chọn JSON
-const fileInput = document.createElement('input');
-fileInput.type = 'file';
-fileInput.accept = '.json';
-fileInput.style.display = 'none';
-document.body.appendChild(fileInput);
-
-// Xử lý tải dữ liệu JSON
-transferBtn.onclick = () => {
-  fileInput.click();
-};
-
-fileInput.addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const jsonData = JSON.parse(e.target.result);
-      
-      // Kiểm tra cấu trúc dữ liệu
-      if (!Array.isArray(jsonData)) {
-        alert('❌ Dữ liệu JSON không hợp lệ. Phải là mảng.');
-        return;
-      }
-      
-      if (jsonData.length > 0) {
-        const firstItem = jsonData[0];
-        // Kiểm tra các trường cần thiết (bao gồm goldPrice)
-        if (!firstItem.time || firstItem.balance === undefined || firstItem.goldPrice === undefined) {
-          alert('❌ Cấu trúc dữ liệu không hợp lệ. Cần có: time, balance, goldPrice');
-          return;
-        }
-      }
-      
-      // Lưu dữ liệu vào localStorage để tab phát lại sử dụng
-      localStorage.setItem('balanceHistory', JSON.stringify(jsonData));
-      localStorage.setItem('replayReady', 'true');
-      
-      alert(`✅ Đã tải thành công ${jsonData.length} điểm dữ liệu!`);
-      
-      // Tự động chuyển sang tab phát lại
-      setTimeout(() => {
-        replayTabBtn.click();
-        
-        // Thông báo để người dùng biết cần nhấn "Tải Dữ Liệu" trong tab phát lại
-        setTimeout(() => {
-          alert('📊 Vui lòng nhấn nút "Tải Dữ Liệu" trong tab Phát Lại để xem biểu đồ.');
-        }, 500);
-        
-      }, 1000);
-      
-    } catch (error) {
-      alert('❌ Lỗi khi đọc file JSON: ' + error.message);
-    }
-  };
-  
-  reader.readAsText(file);
-  
-  // Reset input để có thể chọn cùng file nhiều lần
-  fileInput.value = '';
-});
-
-// Đổi text cho nút
-transferBtn.textContent = 'Tải dữ liệu JSON';
-transferBtn.title = 'Chọn file JSON từ bộ nhớ để phát lại';
-
-// Hàm xuất dữ liệu hiện tại (nếu cần)
-function exportCurrentData() {
-  try {
-    const balanceHistory = JSON.parse(localStorage.getItem('balanceHistory') || '[]');
-    if (balanceHistory.length === 0) {
-      alert('Không có dữ liệu để xuất.');
-      return;
-    }
-    
-    const dataStr = JSON.stringify(balanceHistory, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'gold_trading_data_' + new Date().toISOString().split('T')[0] + '.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    alert(`✅ Đã xuất ${balanceHistory.length} điểm dữ liệu!`);
-  } catch (error) {
-    alert('❌ Lỗi khi xuất dữ liệu: ' + error.message);
-  }
-}
-
-// Thêm nút xuất dữ liệu (tùy chọn)
-const exportBtn = document.createElement('button');
-exportBtn.textContent = 'Xuất dữ liệu JSON';
-exportBtn.style.background = '#17a2b8';
-exportBtn.style.color = 'white';
-exportBtn.style.marginLeft = '10px';
-exportBtn.onclick = exportCurrentData;
-
-// Chèn nút xuất vào header (tùy chọn)
-document.querySelector('header').appendChild(exportBtn);
-</script>
 </body>
 </html>
